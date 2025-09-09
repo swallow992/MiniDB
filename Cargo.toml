@@ -1,0 +1,71 @@
+[package]
+name = "minidb"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A small database system built with Rust for learning purposes"
+repository = "https://github.com/swallow992/MiniDB"
+license = "MIT"
+keywords = ["database", "sql", "storage-engine", "query-engine"]
+categories = ["database"]
+
+[dependencies]
+# 错误处理
+thiserror = "1.0"
+anyhow = "1.0"
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 日志
+log = "0.4"
+env_logger = "0.10"
+
+# 时间处理
+chrono = { version = "0.4", features = ["serde"] }
+
+# 异步支持
+tokio = { version = "1.0", features = ["full"], optional = true }
+
+# 解析器相关
+nom = "7.0"
+
+# 数据结构
+indexmap = "2.0"
+
+[dev-dependencies]
+# 测试相关
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.0"
+tempfile = "3.0"
+
+[features]
+default = []
+async = ["tokio"]
+
+[[bin]]
+name = "minidb"
+path = "src/main.rs"
+
+# [[bench]]
+# name = "buffer_pool"
+# harness = false
+
+# [[bench]]
+# name = "sql_parser"  
+# harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.test]
+opt-level = 1
+
+[workspace]
