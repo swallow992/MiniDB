@@ -114,6 +114,8 @@ impl DataType {
             (DataType::Double, DataType::Float) => true,
             (DataType::Integer, DataType::Float) => true,
             (DataType::Integer, DataType::Double) => true,
+            // Varchar compatibility: smaller strings can fit into larger varchar columns
+            (DataType::Varchar(len1), DataType::Varchar(len2)) => len1 <= len2,
             _ => false,
         }
     }

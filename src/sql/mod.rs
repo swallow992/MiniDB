@@ -22,8 +22,11 @@ pub fn parse_sql(input: &str) -> Result<Statement, ParseError> {
 }
 
 /// Analyze a parsed statement for semantic correctness
-pub fn analyze_statement(stmt: Statement) -> Result<AnalyzedStatement, SemanticError> {
-    let analyzer = SemanticAnalyzer::new();
+pub fn analyze_statement(
+    stmt: Statement,
+    catalog: &dyn analyzer::SchemaCatalog,
+) -> Result<AnalyzedStatement, SemanticError> {
+    let analyzer = SemanticAnalyzer::new(catalog);
     analyzer.analyze(stmt)
 }
 
