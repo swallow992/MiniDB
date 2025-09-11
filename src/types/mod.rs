@@ -52,6 +52,59 @@ pub enum Value {
     Timestamp(NaiveDateTime),
 }
 
+// Custom implementations for Value to handle float comparison
+impl Eq for Value {}
+
+impl std::hash::Hash for Value {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Value::Null => {}
+            Value::Integer(i) => i.hash(state),
+            Value::BigInt(i) => i.hash(state),
+            Value::Float(f) => f.to_bits().hash(state),
+            Value::Double(f) => f.to_bits().hash(state),
+            Value::Varchar(s) => s.hash(state),
+            Value::Boolean(b) => b.hash(state),
+            Value::Date(d) => d.hash(state),
+            Value::Timestamp(t) => t.hash(state),
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering;
+        match (self, other) {
+            (Value::Null, Value::Null) => Some(Ordering::Equal),
+            (Value::Null, _) => Some(Ordering::Less),
+            (_, Value::Null) => Some(Ordering::Greater),
+            
+            (Value::Integer(a), Value::Integer(b)) => a.partial_cmp(b),
+            (Value::BigInt(a), Value::BigInt(b)) => a.partial_cmp(b),
+            (Value::Float(a), Value::Float(b)) => a.partial_cmp(b),
+            (Value::Double(a), Value::Double(b)) => a.partial_cmp(b),
+            (Value::Varchar(a), Value::Varchar(b)) => a.partial_cmp(b),
+            (Value::Boolean(a), Value::Boolean(b)) => a.partial_cmp(b),
+            (Value::Date(a), Value::Date(b)) => a.partial_cmp(b),
+            (Value::Timestamp(a), Value::Timestamp(b)) => a.partial_cmp(b),
+            
+            // Type promotion for numeric types
+            (Value::Integer(a), Value::BigInt(b)) => (*a as i64).partial_cmp(b),
+            (Value::BigInt(a), Value::Integer(b)) => a.partial_cmp(&(*b as i64)),
+            (Value::Integer(a), Value::Float(b)) => (*a as f32).partial_cmp(b),
+            (Value::Float(a), Value::Integer(b)) => a.partial_cmp(&(*b as f32)),
+            (Value::Integer(a), Value::Double(b)) => (*a as f64).partial_cmp(b),
+            (Value::Double(a), Value::Integer(b)) => a.partial_cmp(&(*b as f64)),
+            (Value::Float(a), Value::Double(b)) => (*a as f64).partial_cmp(b),
+            (Value::Double(a), Value::Float(b)) => a.partial_cmp(&(*b as f64)),
+            
+            // Different types are not comparable
+            _ => None,
+        }
+    }
+}
+
 /// Database tuple (row) containing multiple values
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tuple {
