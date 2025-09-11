@@ -108,12 +108,43 @@ pub enum Token {
     EOF,
 }
 
+/// Token information with position details
+#[derive(Debug, Clone, PartialEq)]
+pub struct TokenInfo {
+    /// Token type and value
+    pub token: Token,
+    /// Token category code
+    pub category: TokenCategory,
+    /// Token lexeme (original text)
+    pub lexeme: String,
+    /// Line number (1-based)
+    pub line: u32,
+    /// Column number (1-based)  
+    pub column: u32,
+}
+
+/// Token category codes for output format
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenCategory {
+    Keyword = 1,
+    Identifier = 2,
+    Integer = 3,
+    Float = 4,
+    String = 5,
+    Operator = 6,
+    Delimiter = 7,
+    Comment = 8,
+    EOF = 9,
+}
+
 /// SQL lexer
 pub struct Lexer {
     input: Vec<char>,
     position: usize,
     current_char: Option<char>,
     keywords: HashMap<String, Token>,
+    line: u32,
+    column: u32,
 }
 
 /// Lexer errors
@@ -140,6 +171,8 @@ impl Lexer {
             position: 0,
             current_char,
             keywords: HashMap::new(),
+            line: 1,
+            column: 1,
         };
 
         lexer.init_keywords();
@@ -221,6 +254,13 @@ impl Lexer {
 
     /// Advance to the next character
     fn advance(&mut self) {
+        if let Some('\n') = self.current_char {
+            self.line += 1;
+            self.column = 1;
+        } else {
+            self.column += 1;
+        }
+
         self.position += 1;
         self.current_char = self.input.get(self.position).copied();
     }
@@ -488,6 +528,170 @@ impl Lexer {
 
         Ok(tokens)
     }
+
+    /// Get the next token with position information
+    pub fn next_token_info(&mut self) -> Result<TokenInfo, LexError> {
+        // Skip whitespace and comments first
+        loop {
+            self.skip_whitespace();
+
+            match self.current_char {
+                None => {
+                    return Ok(TokenInfo {
+                        token: Token::EOF,
+                        category: TokenCategory::EOF,
+                        lexeme: String::new(),
+                        line: self.line,
+                        column: self.column,
+                    })
+                }
+
+                Some(ch) => match ch {
+                    // Comments
+                    '-' if self.peek() == Some('-') => {
+                        self.skip_line_comment();
+                        continue;
+                    }
+                    '/' if self.peek() == Some('*') => {
+                        self.skip_block_comment()?;
+                        continue;
+                    }
+                    _ => break, // Found actual token
+                },
+            }
+        }
+
+        // Record position at start of actual token
+        let start_line = self.line;
+        let start_column = self.column;
+        let start_pos = self.position;
+
+        let token = self.next_token()?;
+        let end_pos = self.position;
+
+        // Get lexeme from original input
+        let lexeme = if start_pos < self.input.len() {
+            self.input[start_pos..end_pos.min(self.input.len())]
+                .iter()
+                .collect()
+        } else {
+            String::new()
+        };
+
+        let category = self.get_token_category(&token);
+
+        Ok(TokenInfo {
+            token,
+            category,
+            lexeme,
+            line: start_line,
+            column: start_column,
+        })
+    }
+
+    /// Get token category for output format
+    fn get_token_category(&self, token: &Token) -> TokenCategory {
+        match token {
+            Token::Select
+            | Token::From
+            | Token::Where
+            | Token::Insert
+            | Token::Into
+            | Token::Values
+            | Token::Update
+            | Token::Set
+            | Token::Delete
+            | Token::Create
+            | Token::Table
+            | Token::Drop
+            | Token::Alter
+            | Token::Index
+            | Token::Primary
+            | Token::Key
+            | Token::Foreign
+            | Token::References
+            | Token::Not
+            | Token::And
+            | Token::Or
+            | Token::In
+            | Token::Like
+            | Token::Between
+            | Token::Is
+            | Token::As
+            | Token::Distinct
+            | Token::Order
+            | Token::By
+            | Token::Group
+            | Token::Having
+            | Token::Limit
+            | Token::Offset
+            | Token::Join
+            | Token::Inner
+            | Token::Left
+            | Token::Right
+            | Token::Full
+            | Token::Outer
+            | Token::On
+            | Token::Union
+            | Token::All
+            | Token::Exists
+            | Token::Case
+            | Token::When
+            | Token::Then
+            | Token::Else
+            | Token::End
+            | Token::If
+            | Token::Int
+            | Token::BigInt
+            | Token::Float32
+            | Token::Double
+            | Token::Varchar
+            | Token::Char
+            | Token::Text
+            | Token::Bool
+            | Token::Date
+            | Token::Timestamp => TokenCategory::Keyword,
+
+            Token::Identifier(_) => TokenCategory::Identifier,
+            Token::Integer(_) => TokenCategory::Integer,
+            Token::Float(_) => TokenCategory::Float,
+            Token::String(_) => TokenCategory::String,
+            Token::Boolean(_) | Token::Null => TokenCategory::Keyword,
+
+            Token::Plus
+            | Token::Minus
+            | Token::Multiply
+            | Token::Divide
+            | Token::Modulo
+            | Token::Equal
+            | Token::NotEqual
+            | Token::LessThan
+            | Token::LessEqual
+            | Token::GreaterThan
+            | Token::GreaterEqual => TokenCategory::Operator,
+
+            Token::LeftParen
+            | Token::RightParen
+            | Token::LeftBracket
+            | Token::RightBracket
+            | Token::Comma
+            | Token::Semicolon
+            | Token::Dot => TokenCategory::Delimiter,
+
+            Token::Wildcard => TokenCategory::Operator,
+            Token::EOF => TokenCategory::EOF,
+        }
+    }
+}
+
+impl TokenInfo {
+    /// Format token info as [种别码，词素值，行号，列号]
+    pub fn format_output(&self) -> String {
+        format!(
+            "[{}, {}, {}, {}]",
+            self.category as u8, self.lexeme, self.line, self.column
+        )
+    }
 }
 
 #[cfg(test)]
@@ -605,5 +809,41 @@ mod tests {
             Token::Identifier("users".to_string())
         );
         assert_eq!(lexer.next_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_token_info_format() {
+        let mut lexer = Lexer::new("SELECT id FROM users");
+
+        // Test SELECT keyword
+        let token_info = lexer.next_token_info().unwrap();
+        assert_eq!(token_info.token, Token::Select);
+        assert_eq!(token_info.category, TokenCategory::Keyword);
+        assert_eq!(token_info.line, 1);
+        assert_eq!(token_info.column, 1);
+
+        // Test identifier
+        let token_info = lexer.next_token_info().unwrap();
+        assert_eq!(token_info.token, Token::Identifier("id".to_string()));
+        assert_eq!(token_info.category, TokenCategory::Identifier);
+
+        // Test formatted output
+        let formatted = token_info.format_output();
+        assert!(formatted.starts_with("[2,"));
+    }
+
+    #[test]
+    fn test_position_tracking() {
+        let mut lexer = Lexer::new("SELECT\nid");
+
+        // SELECT on line 1
+        let token_info = lexer.next_token_info().unwrap();
+        assert_eq!(token_info.line, 1);
+        assert_eq!(token_info.column, 1);
+
+        // id on line 2
+        let token_info = lexer.next_token_info().unwrap();
+        assert_eq!(token_info.line, 2);
+        assert_eq!(token_info.column, 1);
     }
 }

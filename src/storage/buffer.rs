@@ -475,6 +475,39 @@ impl BufferPool {
         *counter += 1;
         Ok(*counter)
     }
+
+    /// Get buffer pool statistics
+    pub fn get_stats(&self) -> Result<BufferStats, BufferError> {
+        let frames = &self.frames;
+        let mut used_frames = 0;
+        let mut pinned_pages = 0;
+        let mut dirty_pages = 0;
+
+        for frame_mutex in frames {
+            let frame = frame_mutex
+                .lock()
+                .map_err(|e| BufferError::LockError(e.to_string()))?;
+
+            if !frame.is_free() {
+                used_frames += 1;
+            }
+
+            if frame.pin_count > 0 {
+                pinned_pages += 1;
+            }
+
+            if frame.is_dirty {
+                dirty_pages += 1;
+            }
+        }
+
+        Ok(BufferStats {
+            pool_size: self.pool_size,
+            used_frames,
+            pinned_pages,
+            dirty_pages,
+        })
+    }
 }
 
 /// Buffer pool statistics
@@ -498,7 +531,7 @@ mod tests {
         let pool = BufferPool::new(10);
         assert_eq!(pool.pool_size(), 10);
 
-        let stats = pool.stats().unwrap();
+        let stats = pool.get_stats().unwrap();
         assert_eq!(stats.pool_size, 10);
         assert_eq!(stats.used_frames, 0);
         assert_eq!(stats.pinned_pages, 0);
@@ -516,7 +549,7 @@ mod tests {
         assert!(frame_id < 5);
 
         // Page should be pinned and dirty
-        let stats = pool.stats().unwrap();
+        let stats = pool.get_stats().unwrap();
         assert_eq!(stats.used_frames, 1);
         assert_eq!(stats.pinned_pages, 1);
         assert_eq!(stats.dirty_pages, 1);
@@ -530,7 +563,7 @@ mod tests {
         // Unpin the page
         pool.unpin_page(frame_id, true).unwrap();
 
-        let stats = pool.stats().unwrap();
+        let stats = pool.get_stats().unwrap();
         assert_eq!(stats.pinned_pages, 0);
     }
 
@@ -560,7 +593,7 @@ mod tests {
         }
 
         // Should have triggered eviction
-        let stats = pool.stats().unwrap();
+        let stats = pool.get_stats().unwrap();
         assert_eq!(stats.used_frames, 2); // Pool is full
         assert_eq!(stats.pinned_pages, 1); // One page still pinned
     }
@@ -578,7 +611,7 @@ mod tests {
             pool.unpin_page(frame_id, true).unwrap(); // Mark as dirty
         }
 
-        let stats = pool.stats().unwrap();
+        let stats = pool.get_stats().unwrap();
         assert_eq!(stats.dirty_pages, 3);
 
         // Flush all

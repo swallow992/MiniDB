@@ -9,6 +9,9 @@ pub mod storage;
 pub mod types;
 pub mod utils;
 
+#[cfg(test)]
+mod test_enhancements;
+
 // Re-export commonly used types
 pub use engine::{Database, QueryResult};
 pub use sql::{ParseError, Statement};

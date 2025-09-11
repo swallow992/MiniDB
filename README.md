@@ -18,12 +18,19 @@
   - 缓存管理 (Buffer) - 6个测试 ✅
   - 索引系统 (Index) - 5个测试 ✅
 
+- **数据库引擎** (100% 完成) - 10个测试 ✅
+  - 数据库实例管理 ✅
+  - 表创建和删除 ✅
+  - 数据插入功能 ✅
+  - 基本查询支持 ✅
+  - 错误处理和验证 ✅
+
 ### 🚧 待开发模块
 
-- 数据库引擎 (Database Engine) - 将SQL编译器与存储系统连接
-- 查询执行器 (Query Executor) - 执行查询计划
+- 高级查询功能 - JOIN、GROUP BY、ORDER BY支持
 - 事务处理 (Transaction Manager) - ACID事务支持
 - 网络层 (Network Layer) - 客户端连接支持
+- 查询优化器 - 成本估算和执行计划优化
 
 ## 📋 快速测试
 
@@ -32,7 +39,7 @@
 cd D:\repositories\MniDB
 cargo build
 cargo test
-# 期望结果: 60 passed; 0 failed
+# 期望结果: 70 passed; 0 failed
 ```
 
 ### 详细测试指南
@@ -118,6 +125,12 @@ SQL文本 → [Lexer] → Tokens → [Parser] → AST → [Analyzer] → Analyze
 - **Buffer**: LRU缓冲池，智能内存管理和脏页写回
 - **Index**: B+树和哈希索引，支持范围查询和精确查找
 
+**数据库引擎组件：**
+- **Database**: 数据库实例管理，连接SQL编译器与存储系统
+- **Executor**: 查询执行器框架，支持基本的表操作
+- **Table**: 表管理和元数据维护
+- **Transaction**: 事务处理框架（待完善）
+
 ## 📊 测试覆盖
 
 | 模块 | 测试数量 | 覆盖功能 |
@@ -132,7 +145,9 @@ SQL文本 → [Lexer] → Tokens → [Parser] → AST → [Analyzer] → Analyze
 | File | 5 | 文件I/O、页面分配、元数据管理 |
 | Buffer | 6 | LRU缓存、脏页管理、并发安全 |
 | Index | 5 | B+树索引、哈希索引、范围查询 |
-| **总计** | **60** | **100%核心功能覆盖** |
+| **数据库引擎** | **10** | |
+| Database | 10 | 表管理、数据操作、错误处理 |
+| **总计** | **70** | **100%核心功能覆盖** |
 
 ## 🛠️ 开发环境
 
@@ -187,5 +202,13 @@ MIT License
 ---
 
 **当前版本**: v0.2.0  
-**开发状态**: SQL编译器和存储系统完成，数据库引擎开发中  
-**测试状态**: 60/60 通过 ✅
+**开发状态**: 核心数据库功能完成，支持基本SQL操作  
+**测试状态**: 70/70 通过 ✅
+
+**支持的操作:**
+- ✅ CREATE TABLE / DROP TABLE
+- ✅ INSERT INTO 
+- ✅ SELECT * FROM (基本查询)
+- ✅ 表管理和错误处理
+- ⚠️ UPDATE / DELETE (部分支持)
+- 🚧 JOIN / GROUP BY / ORDER BY (待开发)
