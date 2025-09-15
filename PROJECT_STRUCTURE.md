@@ -1,159 +1,157 @@
-# MiniDB 项目结构
+# MiniDB 项目结构（精简版）
 
 ## 📁 项目概述
 
-MiniDB 是一个使用 Rust 语言构建的小型数据库系统，实现了基本的 SQL 编译器、存储系统和查询执行引擎。
+MiniDB 是一个使用 Rust 语言构建的小型数据库系统，实现了SQL编译器、存储系统和查询执行引擎。经过优化清理，项目结构简洁清晰。
 
-## 🏗️ 核心架构
+## 🏗️ 精简后的核心架构
 
 ```
-src/
-├── lib.rs                    # 库根文件，定义公共接口
-├── main.rs                   # 应用程序入口点，交互式shell
-├── sql/                      # SQL编译器模块
-│   ├── mod.rs                # SQL模块定义
-│   ├── lexer.rs              # 词法分析器
-│   ├── lexer_tests.rs        # 词法分析器测试
-│   ├── parser.rs             # 语法分析器
-│   ├── analyzer.rs           # 语义分析器
-│   └── planner.rs            # 执行计划生成器
-├── storage/                  # 存储系统模块
-│   ├── mod.rs                # 存储模块定义
-│   ├── page.rs               # 页式存储管理
-│   ├── buffer.rs             # 缓存管理
-│   ├── file.rs               # 文件系统接口
-│   └── index.rs              # 索引管理
-├── engine/                   # 数据库引擎模块
-│   ├── mod.rs                # 引擎模块定义
-│   ├── database.rs           # 数据库核心实现
-│   ├── executor.rs           # 查询执行器
-│   ├── table.rs              # 表管理
-│   ├── transaction.rs        # 事务管理
-│   └── tests.rs              # 引擎测试
-├── types/                    # 类型定义模块
-│   └── mod.rs                # 数据类型定义
-└── utils/                    # 工具模块
-    ├── mod.rs                # 工具模块定义
-    ├── bitset.rs             # 位集合工具
-    ├── hash.rs               # 哈希工具
-    └── serialize.rs          # 序列化工具
+MiniDB/
+├── src/                          # 源代码目录
+│   ├── lib.rs                    # 库根文件，定义公共接口
+│   ├── main.rs                   # 主程序入口，交互式shell
+│   ├── sql_compiler_demo.rs      # SQL编译器演示程序
+│   ├── storage_demo.rs           # 存储系统演示程序  
+│   ├── storage_system_test.rs    # 存储系统测试程序
+│   ├── database_demo.rs          # 数据库系统演示程序
+│   ├── sql/                      # SQL编译器模块
+│   │   ├── mod.rs                # SQL模块定义
+│   │   ├── lexer.rs              # 词法分析器
+│   │   ├── lexer_tests.rs        # 词法分析器测试
+│   │   ├── parser.rs             # 语法分析器
+│   │   ├── analyzer.rs           # 语义分析器
+│   │   └── planner.rs            # 执行计划生成器
+│   ├── storage/                  # 存储系统模块
+│   │   ├── mod.rs                # 存储模块定义
+│   │   ├── page.rs               # 页面管理
+│   │   ├── buffer.rs             # 缓冲池管理
+│   │   ├── file.rs               # 文件系统接口
+│   │   └── index.rs              # 索引系统
+│   ├── engine/                   # 数据库引擎模块
+│   │   ├── mod.rs                # 引擎模块定义
+│   │   ├── database.rs           # 数据库核心
+│   │   ├── executor.rs           # 执行器
+│   │   ├── table.rs              # 表管理
+│   │   ├── transaction.rs        # 事务管理
+│   │   └── tests.rs              # 引擎测试
+│   ├── types/                    # 类型定义模块
+│   │   └── mod.rs                # 通用类型定义
+│   └── utils/                    # 工具函数模块
+│       ├── mod.rs                # 工具模块定义
+│       ├── bitset.rs             # 位集合工具
+│       ├── hash.rs               # 哈希工具
+│       └── serialize.rs          # 序列化工具
+├── .github/                      # GitHub配置
+│   ├── AGENTS.md                 # 代理说明
+│   ├── copilot-instructions.md   # Copilot指令
+│   ├── instructions/             # 详细指令文件
+│   └── prompts/                  # 提示词模板
+├── target/                       # 编译输出目录
+├── run_sql_compiler.ps1          # SQL编译器测试脚本
+├── run_storage_test.ps1          # 存储系统测试脚本
+├── sql_tests.sql                 # SQL测试用例
+├── Cargo.toml                    # 项目配置
+├── README.md                     # 项目说明
+├── TESTING_GUIDE.md              # 测试指南
+├── SQL_COMPILER_GUIDE.md         # SQL编译器指南
+└── PROJECT_STRUCTURE.md          # 项目结构说明（本文件）
 ```
 
-## 🚀 核心功能
+## 🎯 核心模块说明
 
-### SQL 编译器
-- **词法分析**: 支持 SQL 关键字、标识符、数字、字符串字面量
-- **语法分析**: 递归下降解析器，支持基本 SQL 语句
-- **语义分析**: 类型检查和作用域解析
-- **执行计划**: 查询优化和执行计划生成
+### 1. SQL编译器模块 (`sql/`)
+- **词法分析器**: 将SQL文本转换为token流
+- **语法分析器**: 构建抽象语法树(AST) 
+- **语义分析器**: 类型检查和语义验证
+- **执行计划生成器**: 生成优化的执行计划
 
-### 存储系统
-- **页式存储**: 4KB 固定大小页面管理
-- **缓存管理**: LRU 替换算法
-- **文件管理**: 表文件和元数据管理
-- **数据持久化**: JSON 格式数据存储
+### 2. 存储系统模块 (`storage/`)
+- **页面管理**: 4KB页面的分配和管理
+- **缓冲池**: LRU缓存机制
+- **文件系统**: 底层文件I/O操作
+- **索引系统**: B+树索引实现
 
-### 查询引擎
-- **表管理**: CREATE/DROP TABLE 操作
-- **数据操作**: INSERT/SELECT/UPDATE/DELETE 操作
-- **WHERE 条件**: 基本条件查询支持
-- **列投影**: SELECT 指定列功能
+### 3. 数据库引擎模块 (`engine/`)
+- **数据库核心**: 主要数据库接口
+- **执行器**: SQL语句执行引擎
+- **表管理**: 表的创建和管理
+- **事务管理**: 基础事务支持
 
-## 📊 数据持久化
+### 4. 演示程序
+- **sql_compiler_demo.rs**: SQL编译器功能演示
+- **storage_demo.rs**: 存储系统功能演示
+- **storage_system_test.rs**: 存储系统性能测试
+- **database_demo.rs**: 完整数据库系统演示
 
-### 存储格式
-- `metadata.json`: 数据库元数据(表目录、下一个表ID)
-- `table_N.json`: 表N的模式和数据，JSON格式
-
-### 持久化策略
-- 自动持久化: CRUD操作后自动保存数据
-- 启动恢复: 数据库启动时自动加载现有数据
-- 容错处理: 持久化失败不影响正常操作
-
-## 🧪 测试系统
+## 🧪 测试框架
 
 ### 核心测试脚本
-- `comprehensive_test.ps1`: 完整功能测试套件
-- `test_persistence.ps1`: 数据持久化专项测试
+1. **`run_sql_compiler.ps1`**: SQL编译器测试
+   - 词法分析测试
+   - 语法分析测试
+   - 语义分析测试
+   - 执行计划生成测试
 
-### 测试覆盖
-- DDL 操作: CREATE TABLE, DROP TABLE
-- DML 操作: INSERT, SELECT, UPDATE, DELETE
-- 高级功能: WHERE 条件, 列投影, 数据类型转换
-- 持久化: 重启数据恢复验证
-- 性能: 基础性能指标测试
+2. **`run_storage_test.ps1`**: 存储系统测试
+   - 页面分配测试
+   - 缓存性能测试
+   - 数据操作测试
+   - 持久化测试
 
-## 📋 支持的 SQL 语法
+3. **`cargo run --bin database_demo`**: 数据库系统测试
+   - 完整SQL操作流程测试
+   - 数据持久性验证
+   - 系统集成测试
 
-### DDL (数据定义语言)
-```sql
-CREATE TABLE table_name (
-    column_name data_type [NULL|NOT NULL],
-    ...
-);
-DROP TABLE table_name;
-```
+## 📚 文档结构
 
-### DML (数据操作语言)
-```sql
-INSERT INTO table_name VALUES (value1, value2, ...);
-SELECT [column_list|*] FROM table_name [WHERE condition];
-UPDATE table_name SET column = value [WHERE condition];
-DELETE FROM table_name [WHERE condition];
-```
+- **README.md**: 项目简介和快速开始
+- **TESTING_GUIDE.md**: 详细测试指南和使用说明
+- **SQL_COMPILER_GUIDE.md**: SQL编译器详细说明
+- **PROJECT_STRUCTURE.md**: 项目结构说明（本文件）
 
-### 支持的数据类型
-- `INTEGER`: 32位整数
-- `BIGINT`: 64位整数
-- `FLOAT`: 32位浮点数
-- `DOUBLE`: 64位浮点数
-- `VARCHAR(n)`: 可变长度字符串
-- `BOOLEAN`: 布尔值
-- `DATE`: 日期
-- `TIMESTAMP`: 时间戳
+## 🔧 构建和运行
 
-## 🔧 开发环境
-
-### 必需依赖
-- Rust 1.70+
-- PowerShell (Windows测试)
-- serde + serde_json (序列化)
-- thiserror (错误处理)
-
-### 构建运行
 ```bash
 # 构建项目
 cargo build
 
-# 运行交互式shell
+# 运行主程序
 cargo run
 
+# 运行特定演示程序
+cargo run --bin sql_compiler_demo
+cargo run --bin storage_demo
+cargo run --bin database_demo
+
 # 运行测试
-.\comprehensive_test.ps1
+./run_sql_compiler.ps1
+./run_storage_test.ps1
 ```
 
-## 📈 性能特点
+## 🎓 学习价值
 
-- **内存存储**: 主要数据存储在内存HashMap中
-- **即时持久化**: 每次修改立即写入文件
-- **JSON格式**: 易于调试和检查的存储格式
-- **单线程**: 当前版本为单线程设计
+### 数据库核心概念
+- **SQL解析**: 词法分析 → 语法分析 → 语义分析
+- **存储管理**: 页式存储 → 缓冲池 → 文件系统
+- **查询执行**: 执行计划 → 操作符 → 结果生成
+- **事务处理**: ACID属性 → 并发控制 → 恢复机制
 
-## 🎯 设计目标
+### Rust编程实践
+- **模块化设计**: 清晰的模块边界和接口
+- **错误处理**: Result类型和错误传播
+- **内存安全**: 所有权系统和借用检查
+- **性能优化**: 零成本抽象和编译时优化
 
-1. **教学价值**: 展示数据库系统核心概念
-2. **代码清晰**: 易于理解和修改的代码结构
-3. **功能完整**: 支持基本的数据库操作
-4. **数据安全**: 可靠的数据持久化机制
+## 📈 扩展方向
 
-## 🚧 未来扩展
-
-- 索引系统完善
-- 事务处理增强
-- 多用户并发支持
-- 查询优化改进
-- 网络接口支持
+- **查询优化**: 基于成本的优化器
+- **索引系统**: B+树、哈希索引
+- **并发控制**: 锁机制、MVCC
+- **网络协议**: 客户端-服务器架构
+- **SQL支持**: 更多SQL标准特性
 
 ---
 
-**MiniDB** - 一个简洁而功能完整的教学数据库系统 🎓
+这个精简版的MiniDB项目保持了核心功能的完整性，同时消除了冗余和过时的代码，为学习数据库系统实现提供了清晰的示例。
