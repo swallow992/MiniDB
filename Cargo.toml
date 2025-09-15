@@ -48,6 +48,18 @@ async = ["tokio"]
 name = "minidb"
 path = "src/main.rs"
 
+[[bin]]
+name = "sql_compiler_demo"
+path = "src/sql_compiler_demo.rs"
+
+[[bin]]
+name = "storage_demo"
+path = "src/storage_demo.rs"
+
+[[bin]]
+name = "database_demo"
+path = "src/database_demo.rs"
+
 # [[bench]]
 # name = "buffer_pool"
 # harness = false
