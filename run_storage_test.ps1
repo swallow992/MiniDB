@@ -32,13 +32,13 @@ switch ($choice) {
         Write-Host "运行完整自动化测试套件..." -ForegroundColor Yellow
         Write-Host ""
         Write-Host "测试范围:" -ForegroundColor Cyan
-        Write-Host "✓ 页式存储系统 (4KB页面分配/释放)" 
+        Write-Host "✓ 页式存储系统 (4KB页面分配/释放)"
         Write-Host "✓ LRU缓存机制验证"
         Write-Host "✓ 模拟数据表操作 (插入/查询/删除)"
         Write-Host "✓ 磁盘I/O与持久化验证"
         Write-Host "✓ 统计信息与性能分析"
         Write-Host ""
-        .\target\debug\storage_system_test.exe
+        .\target\debug\storage_system_test.exe complete
     }
     "2" {
         Write-Host "运行页式存储系统专项测试..." -ForegroundColor Yellow
@@ -52,7 +52,7 @@ switch ($choice) {
         
         # 创建专项测试配置
         $env:STORAGE_TEST_MODE = "PAGE_ONLY"
-        .\target\debug\storage_system_test.exe
+        .\target\debug\storage_system_test.exe page
         Remove-Item Env:STORAGE_TEST_MODE -ErrorAction SilentlyContinue
     }
     "3" {
@@ -66,7 +66,7 @@ switch ($choice) {
         Write-Host ""
         
         $env:STORAGE_TEST_MODE = "CACHE_ONLY"
-        .\target\debug\storage_system_test.exe
+        .\target\debug\storage_system_test.exe cache
         Remove-Item Env:STORAGE_TEST_MODE -ErrorAction SilentlyContinue
     }
     "4" {
@@ -81,7 +81,7 @@ switch ($choice) {
         Write-Host ""
         
         $env:STORAGE_TEST_MODE = "DATA_ONLY"
-        .\target\debug\storage_system_test.exe
+        .\target\debug\storage_system_test.exe data
         Remove-Item Env:STORAGE_TEST_MODE -ErrorAction SilentlyContinue
     }
     "5" {
@@ -102,7 +102,7 @@ switch ($choice) {
         Write-Host ""
         
         $env:STORAGE_TEST_MODE = "INTERACTIVE"
-        .\target\debug\storage_system_test.exe
+        .\target\debug\storage_system_test.exe interactive
         Remove-Item Env:STORAGE_TEST_MODE -ErrorAction SilentlyContinue
     }
     "6" {
