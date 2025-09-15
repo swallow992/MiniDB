@@ -37,15 +37,33 @@
 ### 30秒快速验证
 ```bash
 cd D:\repositories\MniDB
-cargo build
-cargo test
-# 期望结果: 70 passed; 0 failed
+## 🎯 三模块快速测试
+
+### 1️⃣ SQL编译器测试
+```powershell
+.\run_sql_compiler.ps1
+# 选择: 1 (运行标准测试套件)
+# 验证: 词法分析 → 语法分析 → 语义分析 → 执行计划
+```
+
+### 2️⃣ 存储系统测试  
+```powershell
+.\run_storage_test.ps1
+# 选择: 1 (完整自动化测试套件)
+# 验证: 页面管理 → 缓存机制 → 数据持久化 → 性能统计
+```
+
+### 3️⃣ 数据库系统测试
+```powershell
+cargo run --bin database_demo
+# 选择: 1 (自动演示模式)
+# 验证: 建表 → 插入 → 查询 → 删除 → 数据恢复
 ```
 
 ### 详细测试指南
-- **完整教程**: [TESTING_GUIDE.md](TESTING_GUIDE.md) - 详细的测试说明
-- **快速测试**: [QUICK_TEST.md](QUICK_TEST.md) - 5分钟快速验证  
-- **验证清单**: [TEST_CHECKLIST.md](TEST_CHECKLIST.md) - 逐项验证功能
+- **📘 完整测试手册**: [COMPLETE_TESTING_MANUAL.md](COMPLETE_TESTING_MANUAL.md) - 三模块详细测试指南 ⭐
+- **📋 测试指南**: [TESTING_GUIDE.md](TESTING_GUIDE.md) - 简化版测试说明
+- **🔧 SQL编译器指南**: [SQL_COMPILER_GUIDE.md](SQL_COMPILER_GUIDE.md) - SQL编译器详细说明
 
 ## 💫 支持的SQL功能
 
