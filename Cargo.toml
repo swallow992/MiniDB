@@ -60,6 +60,10 @@ path = "src/storage_demo.rs"
 name = "database_demo"
 path = "src/database_demo.rs"
 
+[[bin]]
+name = "storage_system_test"
+path = "src/storage_system_test.rs"
+
 # [[bench]]
 # name = "buffer_pool"
 # harness = false
