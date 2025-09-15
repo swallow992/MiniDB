@@ -232,6 +232,7 @@ impl Lexer {
             ("END", Token::End),
             ("IF", Token::If),
             ("INT", Token::Int),
+            ("INTEGER", Token::Int), // Support both INT and INTEGER
             ("BIGINT", Token::BigInt),
             ("FLOAT", Token::Float32),
             ("DOUBLE", Token::Double),
@@ -270,10 +271,10 @@ impl Lexer {
         self.input.get(self.position + 1).copied()
     }
 
-    /// Skip whitespace characters
+    /// Skip whitespace characters and BOM
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.current_char {
-            if ch.is_whitespace() {
+            if ch.is_whitespace() || ch == '\u{feff}' {
                 self.advance();
             } else {
                 break;

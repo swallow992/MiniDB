@@ -438,8 +438,29 @@ impl Parser {
             }
             Token::Varchar => {
                 self.advance()?;
-                // TODO: Parse size parameter
-                DataType::Varchar(255)
+                // Parse size parameter if present
+                if self.current_token == Token::LeftParen {
+                    self.advance()?; // consume '('
+                    
+                    let size = match &self.current_token {
+                        Token::Integer(n) => {
+                            let size = *n as usize;
+                            self.advance()?; // consume number
+                            size
+                        }
+                        _ => {
+                            return Err(ParseError::UnexpectedToken {
+                                expected: "size number".to_string(),
+                                found: self.current_token.clone(),
+                            })
+                        }
+                    };
+                    
+                    self.expect(Token::RightParen)?; // consume ')'
+                    DataType::Varchar(size)
+                } else {
+                    DataType::Varchar(255) // default size
+                }
             }
             Token::Char => {
                 self.advance()?;

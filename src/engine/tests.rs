@@ -230,7 +230,7 @@ fn test_select_statement() {
         .execute("SELECT * FROM users")
         .expect("Failed to execute SELECT");
 
-    assert!(result.message.contains("SELECT statement executed"));
+    assert!(result.message.contains("Retrieved") && result.message.contains("row(s)"));
 
     // Clean up
     let _ = fs::remove_dir_all(test_dir);
