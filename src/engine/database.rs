@@ -4,6 +4,8 @@
 
 use crate::sql::{parse_sql, Statement};
 use crate::sql::parser::OrderByExpr;
+use crate::sql::diagnostics::{DiagnosticEngine, DiagnosticContext};
+use crate::sql::optimizer::QueryOptimizer;
 use crate::storage::{BufferPool, FileManager};
 use crate::types::{Schema, Tuple, Value, DataType, ColumnDefinition};
 use std::collections::HashMap;
@@ -43,6 +45,10 @@ pub struct Database {
     table_data: HashMap<u32, Vec<Tuple>>,
     /// Next available table ID
     next_table_id: u32,
+    /// Error diagnostics engine
+    diagnostic_engine: DiagnosticEngine,
+    /// Query optimizer
+    optimizer: QueryOptimizer,
 }
 
 /// Query execution result
@@ -111,6 +117,8 @@ impl Database {
             table_schemas: HashMap::new(),
             table_data: HashMap::new(),
             next_table_id: 1,
+            diagnostic_engine: DiagnosticEngine::new(),
+            optimizer: QueryOptimizer::new(),
         };
         
         // Load existing data if available
@@ -123,9 +131,20 @@ impl Database {
 
     /// Execute a SQL statement
     pub fn execute(&mut self, sql: &str) -> Result<QueryResult, ExecutionError> {
-        // Step 1: Parse SQL
+        // Step 1: Parse SQL with enhanced error diagnostics
         let statement = parse_sql(sql)
-            .map_err(|e| ExecutionError::ParseError(format!("Parse error: {:?}", e)))?;
+            .map_err(|e| {
+                let context = DiagnosticContext::new(
+                    self.table_catalog.keys().cloned().collect(),
+                    self.get_all_column_names(),
+                );
+                let suggestions = self.diagnostic_engine.diagnose(&e.to_string(), Some(&context));
+                let enhanced_error = self.diagnostic_engine.format_enhanced_error(
+                    &e.to_string(),
+                    &suggestions
+                );
+                ExecutionError::ParseError(enhanced_error)
+            })?;
         
         // Step 2: Execute based on statement type
         match statement {
@@ -1849,5 +1868,18 @@ impl Database {
         }
         
         Ok(())
+    }
+
+    /// 获取所有列名，用于错误诊断
+    fn get_all_column_names(&self) -> Vec<String> {
+        let mut column_names = Vec::new();
+        for schema in self.table_schemas.values() {
+            for column in &schema.columns {
+                if !column_names.contains(&column.name) {
+                    column_names.push(column.name.clone());
+                }
+            }
+        }
+        column_names
     }
 }

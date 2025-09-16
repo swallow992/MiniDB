@@ -4,13 +4,17 @@
 //! transforming SQL statements into executable query plans.
 
 pub mod analyzer;
+pub mod diagnostics;
 pub mod lexer;
+pub mod optimizer;
 pub mod parser;
 pub mod planner;
 
 // Re-export commonly used types
 pub use analyzer::{AnalyzedStatement, SemanticAnalyzer, SemanticError};
+pub use diagnostics::{DiagnosticEngine, DiagnosticContext, Suggestion, enhance_error_message};
 pub use lexer::{LexError, Lexer, Token};
+pub use optimizer::{QueryOptimizer, OptimizedPlan, OptimizationStats};
 pub use parser::{ParseError, Parser, Statement};
 pub use planner::{ExecutionPlan, PlanError, QueryPlanner};
 

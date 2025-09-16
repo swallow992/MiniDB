@@ -756,6 +756,34 @@ impl Parser {
     
     /// Parse FROM clause
     fn parse_from_clause(&mut self) -> Result<FromClause, ParseError> {
+        let mut from_clause = self.parse_from_table()?;
+        
+        // Parse optional JOIN clauses
+        while self.is_join_keyword() {
+            let join_type = self.parse_join_type()?;
+            let right = self.parse_from_table()?;
+            
+            // Parse ON condition
+            let condition = if self.current_token == Token::On {
+                self.advance()?; // consume ON
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            
+            from_clause = FromClause::Join {
+                left: Box::new(from_clause),
+                join_type,
+                right: Box::new(right),
+                condition,
+            };
+        }
+        
+        Ok(from_clause)
+    }
+    
+    /// Parse a single table in FROM clause
+    fn parse_from_table(&mut self) -> Result<FromClause, ParseError> {
         match &self.current_token {
             Token::Identifier(name) => {
                 let name = name.clone();
@@ -764,6 +792,54 @@ impl Parser {
             }
             _ => Err(ParseError::UnexpectedToken {
                 expected: "table name".to_string(),
+                found: self.current_token.clone(),
+            }),
+        }
+    }
+    
+    /// Check if current token is a JOIN keyword
+    fn is_join_keyword(&self) -> bool {
+        matches!(self.current_token, Token::Join | Token::Inner | Token::Left | Token::Right | Token::Full)
+    }
+    
+    /// Parse JOIN type
+    fn parse_join_type(&mut self) -> Result<JoinType, ParseError> {
+        match self.current_token {
+            Token::Join => {
+                self.advance()?;
+                Ok(JoinType::Inner)
+            }
+            Token::Inner => {
+                self.advance()?;
+                self.expect(Token::Join)?;
+                Ok(JoinType::Inner)
+            }
+            Token::Left => {
+                self.advance()?;
+                if self.current_token == Token::Outer {
+                    self.advance()?;
+                }
+                self.expect(Token::Join)?;
+                Ok(JoinType::Left)
+            }
+            Token::Right => {
+                self.advance()?;
+                if self.current_token == Token::Outer {
+                    self.advance()?;
+                }
+                self.expect(Token::Join)?;
+                Ok(JoinType::Right)
+            }
+            Token::Full => {
+                self.advance()?;
+                if self.current_token == Token::Outer {
+                    self.advance()?;
+                }
+                self.expect(Token::Join)?;
+                Ok(JoinType::Full)
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "JOIN type".to_string(),
                 found: self.current_token.clone(),
             }),
         }

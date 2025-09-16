@@ -21,6 +21,13 @@ pub enum ExecutionPlan {
         filter: Option<Expression>,
     },
 
+    /// Scan a table using an index
+    IndexScan {
+        table_name: String,
+        index_name: String,
+        condition: Option<Expression>,
+    },
+
     /// Project specific columns
     Project {
         input: Box<ExecutionPlan>,

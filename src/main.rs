@@ -124,6 +124,25 @@ fn show_help() {
     println!("  SELECT COUNT(*), SUM(col), AVG(col)...    - 聚合函数");
     println!("  SELECT ... WHERE col IN (values)          - 条件查询");
     println!();
+    println!("🔗 JOIN 操作 (NEW!):");
+    println!("  SELECT * FROM table1 JOIN table2 ON condition      - 内连接");
+    println!("  SELECT * FROM table1 INNER JOIN table2 ON ...      - 显式内连接");
+    println!("  SELECT * FROM table1 LEFT JOIN table2 ON ...       - 左外连接");
+    println!("  SELECT * FROM table1 RIGHT JOIN table2 ON ...      - 右外连接");
+    println!("  SELECT * FROM table1 FULL OUTER JOIN table2 ON ... - 全外连接");
+    println!();
+    println!("🗂️ 索引系统 (NEW!):");
+    println!("  CREATE INDEX idx_name ON table (column)           - 创建索引");
+    println!("  CREATE UNIQUE INDEX idx_name ON table (column)    - 创建唯一索引");
+    println!("  DROP INDEX idx_name                               - 删除索引");
+    println!("  自动主键索引和查询优化                              - 自动功能");
+    println!();
+    println!("🔄 事务支持 (NEW!):");
+    println!("  BEGIN TRANSACTION / BEGIN                         - 开始事务");
+    println!("  COMMIT                                           - 提交事务");
+    println!("  ROLLBACK                                         - 回滚事务");
+    println!("  事务隔离级别: READ_COMMITTED, SERIALIZABLE         - 隔离控制");
+    println!();
     println!("支持的聚合函数:");
     println!("  COUNT(*)         计算行数");
     println!("  COUNT(column)    计算非空值数量");
@@ -143,6 +162,18 @@ fn show_help() {
     println!("  SELECT * FROM users LIMIT 5 OFFSET 10;");
     println!("  SELECT department, COUNT(*) FROM users GROUP BY department;");
     println!("  SELECT AVG(age), MAX(age) FROM users WHERE age > 25;");
+    println!();
+    println!("🔗 JOIN 查询示例:");
+    println!("  SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id;");
+    println!("  SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id;");
+    println!();
+    println!("🗂️ 索引管理示例:");
+    println!("  CREATE INDEX idx_age ON users (age);");
+    println!("  CREATE UNIQUE INDEX idx_email ON users (email);");
+    println!();
+    println!("🔄 事务处理示例:");
+    println!("  BEGIN; INSERT INTO users VALUES (1, 'John', 25); COMMIT;");
+    println!("  BEGIN; UPDATE users SET age = 26 WHERE id = 1; ROLLBACK;");
     println!();
 }
 

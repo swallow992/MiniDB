@@ -9,9 +9,9 @@ pub mod storage;
 pub mod types;
 pub mod utils;
 
-// 测试模块相关的增强功能
-// #[cfg(test)]
-// mod test_enhancements;
+// 高级功能测试模块
+#[cfg(test)]
+mod advanced_features_test;
 
 // Re-export commonly used types
 pub use engine::{Database, QueryResult};

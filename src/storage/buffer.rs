@@ -1,8 +1,8 @@
 //! Buffer pool management
 //!
 //! This module implements a buffer pool that manages pages in memory.
-//! It uses LRU (Least Recently Used) eviction policy and handles
-//! dirty page write-back to storage.
+//! It supports multiple cache replacement policies: LRU, Clock, and LFU.
+//! It handles dirty page write-back to storage.
 
 use crate::storage::file::{DatabaseFile, FileError};
 use crate::storage::page::{Page, PageId};
@@ -10,12 +10,259 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
+/// Cache replacement policy trait
+pub trait CachePolicy: Send + Sync {
+    /// Called when a frame is accessed
+    fn on_access(&mut self, frame_id: FrameId);
+    
+    /// Called when a new frame is added to the pool
+    fn on_insert(&mut self, frame_id: FrameId);
+    
+    /// Find the best frame to evict
+    fn find_victim(&mut self, frames: &[Mutex<Frame>]) -> Option<FrameId>;
+    
+    /// Called when a frame is evicted
+    fn on_evict(&mut self, frame_id: FrameId);
+    
+    /// Get policy name for debugging
+    fn name(&self) -> &'static str;
+}
+
+/// LRU (Least Recently Used) cache policy
+#[derive(Debug)]
+pub struct LRUPolicy {
+    lru_queue: VecDeque<FrameId>,
+    access_counter: u64,
+    frame_access_time: HashMap<FrameId, u64>,
+}
+
+/// Clock cache policy (also known as Second Chance)
+#[derive(Debug)]
+pub struct ClockPolicy {
+    clock_hand: usize,
+    reference_bits: Vec<bool>,
+    pool_size: usize,
+}
+
+/// LFU (Least Frequently Used) cache policy
+#[derive(Debug)]
+pub struct LFUPolicy {
+    access_counts: HashMap<FrameId, u64>,
+    access_times: HashMap<FrameId, u64>,
+    global_time: u64,
+}
+
+/// Cache policy type enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CachePolicyType {
+    LRU,
+    Clock,
+    LFU,
+}
+
+impl LRUPolicy {
+    pub fn new(pool_size: usize) -> Self {
+        let mut lru_queue = VecDeque::with_capacity(pool_size);
+        for i in 0..pool_size {
+            lru_queue.push_back(i);
+        }
+        
+        Self {
+            lru_queue,
+            access_counter: 0,
+            frame_access_time: HashMap::new(),
+        }
+    }
+}
+
+impl CachePolicy for LRUPolicy {
+    fn on_access(&mut self, frame_id: FrameId) {
+        self.access_counter += 1;
+        self.frame_access_time.insert(frame_id, self.access_counter);
+    }
+    
+    fn on_insert(&mut self, frame_id: FrameId) {
+        self.on_access(frame_id);
+    }
+    
+    fn find_victim(&mut self, frames: &[Mutex<Frame>]) -> Option<FrameId> {
+        // Try to find a free frame first
+        for &frame_id in self.lru_queue.iter() {
+            if let Ok(frame) = frames[frame_id].lock() {
+                if frame.is_free() {
+                    return Some(frame_id);
+                }
+            }
+        }
+
+        // Look for evictable frame using LRU
+        let mut oldest_time = u64::MAX;
+        let mut victim_frame = None;
+
+        for &frame_id in self.lru_queue.iter() {
+            if let Ok(frame) = frames[frame_id].lock() {
+                if frame.is_evictable() {
+                    if let Some(&access_time) = self.frame_access_time.get(&frame_id) {
+                        if access_time < oldest_time {
+                            oldest_time = access_time;
+                            victim_frame = Some(frame_id);
+                        }
+                    } else {
+                        // Frame never accessed, highest priority for eviction
+                        return Some(frame_id);
+                    }
+                }
+            }
+        }
+
+        victim_frame
+    }
+    
+    fn on_evict(&mut self, frame_id: FrameId) {
+        self.frame_access_time.remove(&frame_id);
+    }
+    
+    fn name(&self) -> &'static str {
+        "LRU"
+    }
+}
+
+impl ClockPolicy {
+    pub fn new(pool_size: usize) -> Self {
+        Self {
+            clock_hand: 0,
+            reference_bits: vec![false; pool_size],
+            pool_size,
+        }
+    }
+}
+
+impl CachePolicy for ClockPolicy {
+    fn on_access(&mut self, frame_id: FrameId) {
+        if frame_id < self.pool_size {
+            self.reference_bits[frame_id] = true;
+        }
+    }
+    
+    fn on_insert(&mut self, frame_id: FrameId) {
+        self.on_access(frame_id);
+    }
+    
+    fn find_victim(&mut self, frames: &[Mutex<Frame>]) -> Option<FrameId> {
+        let start_hand = self.clock_hand;
+        
+        loop {
+            let frame_id = self.clock_hand;
+            
+            if let Ok(frame) = frames[frame_id].lock() {
+                if frame.is_free() {
+                    return Some(frame_id);
+                }
+                
+                if frame.is_evictable() {
+                    if !self.reference_bits[frame_id] {
+                        // Found victim
+                        return Some(frame_id);
+                    } else {
+                        // Give second chance
+                        self.reference_bits[frame_id] = false;
+                    }
+                }
+            }
+            
+            // Move clock hand
+            self.clock_hand = (self.clock_hand + 1) % self.pool_size;
+            
+            // If we've made a full circle, pick current frame if evictable
+            if self.clock_hand == start_hand {
+                if let Ok(frame) = frames[frame_id].lock() {
+                    if frame.is_evictable() {
+                        return Some(frame_id);
+                    }
+                }
+                break;
+            }
+        }
+        
+        None
+    }
+    
+    fn on_evict(&mut self, frame_id: FrameId) {
+        if frame_id < self.pool_size {
+            self.reference_bits[frame_id] = false;
+        }
+    }
+    
+    fn name(&self) -> &'static str {
+        "Clock"
+    }
+}
+
+impl LFUPolicy {
+    pub fn new(_pool_size: usize) -> Self {
+        Self {
+            access_counts: HashMap::new(),
+            access_times: HashMap::new(),
+            global_time: 0,
+        }
+    }
+}
+
+impl CachePolicy for LFUPolicy {
+    fn on_access(&mut self, frame_id: FrameId) {
+        self.global_time += 1;
+        *self.access_counts.entry(frame_id).or_insert(0) += 1;
+        self.access_times.insert(frame_id, self.global_time);
+    }
+    
+    fn on_insert(&mut self, frame_id: FrameId) {
+        self.on_access(frame_id);
+    }
+    
+    fn find_victim(&mut self, frames: &[Mutex<Frame>]) -> Option<FrameId> {
+        let mut min_count = u64::MAX;
+        let mut oldest_time = u64::MAX;
+        let mut victim_frame = None;
+        
+        for frame_id in 0..frames.len() {
+            if let Ok(frame) = frames[frame_id].lock() {
+                if frame.is_free() {
+                    return Some(frame_id);
+                }
+                
+                if frame.is_evictable() {
+                    let count = self.access_counts.get(&frame_id).copied().unwrap_or(0);
+                    let time = self.access_times.get(&frame_id).copied().unwrap_or(0);
+                    
+                    // Choose frame with lowest access count, break ties with oldest access time
+                    if count < min_count || (count == min_count && time < oldest_time) {
+                        min_count = count;
+                        oldest_time = time;
+                        victim_frame = Some(frame_id);
+                    }
+                }
+            }
+        }
+        
+        victim_frame
+    }
+    
+    fn on_evict(&mut self, frame_id: FrameId) {
+        self.access_counts.remove(&frame_id);
+        self.access_times.remove(&frame_id);
+    }
+    
+    fn name(&self) -> &'static str {
+        "LFU"
+    }
+}
+
 /// Frame identifier in buffer pool
 pub type FrameId = usize;
 
 /// Buffer pool frame containing a page and metadata
 #[derive(Debug)]
-struct Frame {
+pub struct Frame {
     /// The page stored in this frame
     page: Option<Page>,
     /// File containing this page
@@ -24,8 +271,6 @@ struct Frame {
     pin_count: u32,
     /// Whether the page has been modified
     is_dirty: bool,
-    /// Last access timestamp for LRU
-    last_access: u64,
 }
 
 /// Buffer pool managing pages in memory
@@ -34,10 +279,8 @@ pub struct BufferPool {
     frames: Vec<Mutex<Frame>>,
     /// Map from (file_name, page_id) to frame_id
     page_table: Mutex<HashMap<(String, PageId), FrameId>>,
-    /// LRU queue for eviction policy
-    lru_queue: Mutex<VecDeque<FrameId>>,
-    /// Global access counter for LRU
-    access_counter: Mutex<u64>,
+    /// Cache replacement policy
+    cache_policy: Mutex<Box<dyn CachePolicy>>,
     /// Pool size
     pool_size: usize,
 }
@@ -74,7 +317,6 @@ impl Frame {
             file: None,
             pin_count: 0,
             is_dirty: false,
-            last_access: 0,
         }
     }
 
@@ -88,23 +330,28 @@ impl Frame {
 }
 
 impl BufferPool {
-    /// Create a new buffer pool with specified size
+    /// Create a new buffer pool with specified size and default LRU policy
     pub fn new(pool_size: usize) -> Self {
+        Self::with_policy(pool_size, CachePolicyType::LRU)
+    }
+    
+    /// Create a new buffer pool with specified size and cache policy
+    pub fn with_policy(pool_size: usize, policy_type: CachePolicyType) -> Self {
         let mut frames = Vec::with_capacity(pool_size);
         for _ in 0..pool_size {
             frames.push(Mutex::new(Frame::new()));
         }
 
-        let mut lru_queue = VecDeque::with_capacity(pool_size);
-        for i in 0..pool_size {
-            lru_queue.push_back(i);
-        }
+        let policy: Box<dyn CachePolicy> = match policy_type {
+            CachePolicyType::LRU => Box::new(LRUPolicy::new(pool_size)),
+            CachePolicyType::Clock => Box::new(ClockPolicy::new(pool_size)),
+            CachePolicyType::LFU => Box::new(LFUPolicy::new(pool_size)),
+        };
 
         Self {
             frames,
             page_table: Mutex::new(HashMap::new()),
-            lru_queue: Mutex::new(lru_queue),
-            access_counter: Mutex::new(0),
+            cache_policy: Mutex::new(policy),
             pool_size,
         }
     }
@@ -140,10 +387,12 @@ impl BufferPool {
                     .lock()
                     .map_err(|e| BufferError::LockError(e.to_string()))?;
 
-                frame.pin_count += 1;
-                frame.last_access = self.next_access_time()?;
-
-                if let Some(ref page) = frame.page {
+            frame.pin_count += 1;
+            
+            // Update cache policy
+            if let Ok(mut policy) = self.cache_policy.lock() {
+                policy.on_access(frame_id);
+            }                if let Some(ref page) = frame.page {
                     return Ok((frame_id, Arc::new(Mutex::new(page.clone()))));
                 }
             }
@@ -173,7 +422,12 @@ impl BufferPool {
             frame.file = Some(file.clone());
             frame.pin_count = 1;
             frame.is_dirty = false;
-            frame.last_access = self.next_access_time()?;
+            
+            // Update cache policy
+            drop(frame);
+            if let Ok(mut policy) = self.cache_policy.lock() {
+                policy.on_insert(frame_id);
+            }
         }
 
         // Update page table
@@ -228,7 +482,12 @@ impl BufferPool {
             frame.file = Some(file.clone());
             frame.pin_count = 1;
             frame.is_dirty = true; // New page is dirty
-            frame.last_access = self.next_access_time()?;
+            
+            // Update cache policy
+            drop(frame);
+            if let Ok(mut policy) = self.cache_policy.lock() {
+                policy.on_insert(frame_id);
+            }
         }
 
         // Update page table
@@ -346,134 +605,113 @@ impl BufferPool {
         })
     }
 
-    /// Find a victim frame for eviction using LRU
+    /// Find a victim frame for eviction using configured cache policy
     fn find_victim_frame(&self) -> Result<FrameId, BufferError> {
-        let lru_queue = self
-            .lru_queue
+        let mut policy = self
+            .cache_policy
             .lock()
             .map_err(|e| BufferError::LockError(e.to_string()))?;
 
-        // Try to find a free frame first
-        for &frame_id in lru_queue.iter() {
-            let frame = self.frames[frame_id]
-                .lock()
-                .map_err(|e| BufferError::LockError(e.to_string()))?;
-            if frame.is_free() {
-                return Ok(frame_id);
-            }
-        }
-
-        // Look for evictable frame using LRU
-        let mut oldest_time = u64::MAX;
-        let mut victim_frame = None;
-
-        for &frame_id in lru_queue.iter() {
-            let frame = self.frames[frame_id]
-                .lock()
-                .map_err(|e| BufferError::LockError(e.to_string()))?;
-
-            if frame.is_evictable() && frame.last_access < oldest_time {
-                oldest_time = frame.last_access;
-                victim_frame = Some(frame_id);
-            }
-        }
-
-        victim_frame.ok_or(BufferError::PoolFull)
+        policy.find_victim(&self.frames).ok_or(BufferError::PoolFull)
     }
 
     /// Evict a frame (write dirty page to disk if necessary)
     fn evict_frame(&self, frame_id: FrameId) -> Result<(), BufferError> {
-        let mut frame = self.frames[frame_id]
-            .lock()
-            .map_err(|e| BufferError::LockError(e.to_string()))?;
+        // Check if frame is evictable
+        {
+            let frame = self.frames[frame_id]
+                .lock()
+                .map_err(|e| BufferError::LockError(e.to_string()))?;
 
-        if !frame.is_evictable() {
-            return Err(BufferError::FramePinned(frame_id));
+            if !frame.is_evictable() {
+                return Err(BufferError::FramePinned(frame_id));
+            }
         }
 
-        // Write dirty page to disk
-        if frame.is_dirty && frame.page.is_some() && frame.file.is_some() {
-            let file = frame.file.as_ref().unwrap().clone();
-            let mut page = frame.page.take().unwrap();
-            let page_id = page.page_id();
-
-            // Remove from page table
-            {
-                let mut page_table = self
-                    .page_table
-                    .lock()
-                    .map_err(|e| BufferError::LockError(e.to_string()))?;
-
-                let file_name = {
-                    let f = file
-                        .lock()
-                        .map_err(|e| BufferError::LockError(e.to_string()))?;
-                    f.path().file_stem().unwrap().to_string_lossy().to_string()
-                };
-
-                page_table.remove(&(file_name, page_id));
-            }
-
-            // Release frame lock before file I/O
-            drop(frame);
-
-            // Write to file
-            {
-                let mut f = file
-                    .lock()
-                    .map_err(|e| BufferError::LockError(e.to_string()))?;
-                f.write_page(&mut page)?;
-            }
-
-            // Reacquire frame lock and clear
+        // Handle dirty page write and page table cleanup
+        let need_file_write = {
             let mut frame = self.frames[frame_id]
                 .lock()
                 .map_err(|e| BufferError::LockError(e.to_string()))?;
-            frame.page = None;
-            frame.file = None;
-            frame.is_dirty = false;
-            frame.pin_count = 0;
-        } else if frame.page.is_some() {
-            // Clean page, just remove from page table
-            let page_id = frame.page.as_ref().unwrap().page_id();
+            
+            let mut file_and_page = None;
+            
+            if frame.is_dirty && frame.page.is_some() && frame.file.is_some() {
+                let file = frame.file.as_ref().unwrap().clone();
+                let mut page = frame.page.take().unwrap();
+                let page_id = page.page_id();
 
-            if let Some(ref file) = frame.file {
-                let mut page_table = self
-                    .page_table
-                    .lock()
-                    .map_err(|e| BufferError::LockError(e.to_string()))?;
-
-                let file_name = {
-                    let f = file
+                // Remove from page table
+                {
+                    let mut page_table = self
+                        .page_table
                         .lock()
                         .map_err(|e| BufferError::LockError(e.to_string()))?;
-                    f.path().file_stem().unwrap().to_string_lossy().to_string()
-                };
 
-                page_table.remove(&(file_name, page_id));
+                    let file_name = {
+                        let f = file
+                            .lock()
+                            .map_err(|e| BufferError::LockError(e.to_string()))?;
+                        f.path().file_stem().unwrap().to_string_lossy().to_string()
+                    };
+
+                    page_table.remove(&(file_name, page_id));
+                }
+                
+                file_and_page = Some((file, page));
+            } else if frame.page.is_some() {
+                // Clean page, just remove from page table
+                let page_id = frame.page.as_ref().unwrap().page_id();
+
+                if let Some(ref file) = frame.file {
+                    let mut page_table = self
+                        .page_table
+                        .lock()
+                        .map_err(|e| BufferError::LockError(e.to_string()))?;
+
+                    let file_name = {
+                        let f = file
+                            .lock()
+                            .map_err(|e| BufferError::LockError(e.to_string()))?;
+                        f.path().file_stem().unwrap().to_string_lossy().to_string()
+                    };
+
+                    page_table.remove(&(file_name, page_id));
+                }
             }
 
+            // Clear frame
             frame.page = None;
             frame.file = None;
             frame.pin_count = 0;
             frame.is_dirty = false;
-        } else {
-            // Empty frame
-            frame.pin_count = 0;
-            frame.is_dirty = false;
+            
+            file_and_page
+        };
+
+        // Write dirty page to file if needed (outside of frame lock)
+        if let Some((file, mut page)) = need_file_write {
+            let mut f = file
+                .lock()
+                .map_err(|e| BufferError::LockError(e.to_string()))?;
+            f.write_page(&mut page)?;
+        }
+
+        // Notify cache policy of eviction
+        if let Ok(mut policy) = self.cache_policy.lock() {
+            policy.on_evict(frame_id);
         }
 
         Ok(())
     }
 
-    /// Get next access timestamp
-    fn next_access_time(&self) -> Result<u64, BufferError> {
-        let mut counter = self
-            .access_counter
+    /// Get the cache policy name for debugging
+    pub fn cache_policy_name(&self) -> Result<String, BufferError> {
+        let policy = self
+            .cache_policy
             .lock()
             .map_err(|e| BufferError::LockError(e.to_string()))?;
-        *counter += 1;
-        Ok(*counter)
+        Ok(policy.name().to_string())
     }
 
     /// Get buffer pool statistics
@@ -619,5 +857,85 @@ mod tests {
 
         let stats = pool.stats().unwrap();
         assert_eq!(stats.dirty_pages, 0);
+    }
+
+    #[test]
+    fn test_lru_cache_policy() {
+        let temp_dir = TempDir::new().unwrap();
+        let fm = FileManager::new(temp_dir.path()).unwrap();
+        let file = fm.create_file("test").unwrap();
+        let pool = BufferPool::with_policy(2, CachePolicyType::LRU);
+
+        assert_eq!(pool.cache_policy_name().unwrap(), "LRU");
+
+        // Fill buffer pool
+        let (frame1, _) = pool.new_page(file.clone(), PageType::Data).unwrap();
+        let (frame2, _) = pool.new_page(file.clone(), PageType::Data).unwrap();
+
+        // Unpin both pages
+        pool.unpin_page(frame1, false).unwrap();
+        pool.unpin_page(frame2, false).unwrap();
+
+        // Access frame1 to make it more recently used
+        let _ = pool.fetch_page(file.clone(), 0).unwrap();
+        pool.unpin_page(frame1, false).unwrap();
+
+        // Create a new page (should evict frame2, not frame1)
+        let _ = pool.new_page(file.clone(), PageType::Data).unwrap();
+
+        let stats = pool.get_stats().unwrap();
+        assert_eq!(stats.used_frames, 2);
+    }
+
+    #[test]
+    fn test_clock_cache_policy() {
+        let temp_dir = TempDir::new().unwrap();
+        let fm = FileManager::new(temp_dir.path()).unwrap();
+        let file = fm.create_file("test").unwrap();
+        let pool = BufferPool::with_policy(3, CachePolicyType::Clock);
+
+        assert_eq!(pool.cache_policy_name().unwrap(), "Clock");
+
+        // Fill buffer pool
+        for _ in 0..3 {
+            let (frame_id, _) = pool.new_page(file.clone(), PageType::Data).unwrap();
+            pool.unpin_page(frame_id, false).unwrap();
+        }
+
+        // Create another page to trigger eviction
+        let _ = pool.new_page(file.clone(), PageType::Data).unwrap();
+
+        let stats = pool.get_stats().unwrap();
+        assert_eq!(stats.used_frames, 3);
+    }
+
+    #[test]
+    fn test_lfu_cache_policy() {
+        let temp_dir = TempDir::new().unwrap();
+        let fm = FileManager::new(temp_dir.path()).unwrap();
+        let file = fm.create_file("test").unwrap();
+        let pool = BufferPool::with_policy(3, CachePolicyType::LFU);
+
+        assert_eq!(pool.cache_policy_name().unwrap(), "LFU");
+
+        // Fill buffer pool
+        let mut frames = Vec::new();
+        for _ in 0..3 {
+            let (frame_id, _) = pool.new_page(file.clone(), PageType::Data).unwrap();
+            pool.unpin_page(frame_id, false).unwrap();
+            frames.push(frame_id);
+        }
+
+        // Access first page multiple times to increase its frequency
+        for _ in 0..5 {
+            let _ = pool.fetch_page(file.clone(), 0).unwrap();
+            pool.unpin_page(frames[0], false).unwrap();
+        }
+
+        // Create another page to trigger eviction (should evict least frequently used)
+        let _ = pool.new_page(file.clone(), PageType::Data).unwrap();
+
+        let stats = pool.get_stats().unwrap();
+        assert_eq!(stats.used_frames, 3);
     }
 }
