@@ -1,9 +1,11 @@
-# Rust
+# Rust 构建产物
 /target/
 **/*.rs.bk
 *.pdb
+*.exe
+*.d
 
-# Cargo
+# Cargo 文件
 Cargo.lock
 
 # IDE
@@ -56,16 +58,23 @@ node_modules/
 .env
 .env.test
 
-# Database files
+# 数据库文件
 *.db
 *.sqlite
 *.sqlite3
 minidb_data/
 data/
+test_new_features_db/
 
-# Temporary files
+# 临时文件和测试文件
 *.tmp
 *.temp
+*.txt
+test_*.sql
+complete_test.*
+debug_test.*
+test_group_by.*
+test_summary.*
 
 # Benchmark results
 bench_results/

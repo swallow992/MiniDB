@@ -4,6 +4,7 @@
 //! The planner performs query optimization and generates a tree of
 //! operators that can be executed by the query executor.
 
+use crate::engine::executor::AggregateFunction;
 use crate::sql::analyzer::AnalyzedStatement;
 use crate::sql::parser::{Expression, FromClause, SelectList, Statement};
 use crate::types::{DataType, Schema};
@@ -80,6 +81,13 @@ pub enum ExecutionPlan {
         input: Box<ExecutionPlan>,
         count: u64,
         offset: Option<u64>,
+    },
+
+    /// Group by and aggregate
+    GroupBy {
+        input: Box<ExecutionPlan>,
+        group_expressions: Vec<Expression>,
+        aggregate_functions: Vec<AggregateFunction>,
     },
 }
 
@@ -165,15 +173,20 @@ impl QueryPlanner {
                 select_list,
                 from_clause,
                 where_clause,
-                group_by: _, // TODO: Implement GROUP BY
-                having: _,   // TODO: Implement HAVING
-                order_by: _, // TODO: Implement ORDER BY
-                limit: _,    // TODO: Implement LIMIT
-                offset: _,   // TODO: Implement OFFSET
-            } => self.plan_select(
+                group_by,
+                having,
+                order_by,
+                limit,
+                offset,
+            } => self.plan_select_complete(
                 select_list,
                 from_clause,
                 where_clause,
+                group_by,
+                having,
+                order_by,
+                limit,
+                offset,
                 &analyzed.table_schemas,
                 &analyzed.expression_types,
             ),
@@ -243,12 +256,17 @@ impl QueryPlanner {
         }
     }
 
-    /// Plan a SELECT statement
-    fn plan_select(
+    /// Plan a complete SELECT statement with all clauses
+    fn plan_select_complete(
         &self,
         select_list: SelectList,
         from_clause: Option<FromClause>,
         where_clause: Option<Expression>,
+        group_by: Option<Vec<Expression>>,
+        having: Option<Expression>,
+        order_by: Option<Vec<crate::sql::parser::OrderByExpr>>,
+        limit: Option<u64>,
+        offset: Option<u64>,
         table_schemas: &HashMap<String, Schema>,
         expression_types: &HashMap<String, DataType>,
     ) -> Result<ExecutionPlan, PlanError> {
@@ -270,10 +288,157 @@ impl QueryPlanner {
             };
         }
 
+        // Add GROUP BY if present, or if SELECT list contains aggregate functions
+        if let Some(group_exprs) = group_by {
+            // Explicit GROUP BY clause
+            plan = self.plan_group_by(plan, group_exprs, having)?;
+        } else if self.contains_aggregate_functions(&select_list) {
+            // No GROUP BY but SELECT contains aggregate functions - create implicit GROUP BY
+            let aggregate_functions = self.extract_aggregate_functions(&select_list);
+            plan = ExecutionPlan::GroupBy {
+                input: Box::new(plan),
+                group_expressions: Vec::new(), // Empty group - aggregate over all rows
+                aggregate_functions,
+            };
+        }
+
         // Add projection
         plan = self.plan_select_list(plan, select_list, table_schemas, expression_types)?;
 
+        // Add ORDER BY if present
+        if let Some(order_exprs) = order_by {
+            let sort_keys = order_exprs
+                .into_iter()
+                .map(|order_expr| SortKey {
+                    expression: order_expr.expr,
+                    descending: order_expr.desc,
+                })
+                .collect();
+
+            plan = ExecutionPlan::Sort {
+                input: Box::new(plan),
+                sort_keys,
+            };
+        }
+
+        // Add LIMIT/OFFSET if present
+        if let Some(limit_count) = limit {
+            plan = ExecutionPlan::Limit {
+                input: Box::new(plan),
+                count: limit_count,
+                offset,
+            };
+        }
+
         Ok(plan)
+    }
+
+    /// Plan GROUP BY clause
+    fn plan_group_by(
+        &self,
+        input: ExecutionPlan,
+        group_exprs: Vec<Expression>,
+        _having: Option<Expression>,
+    ) -> Result<ExecutionPlan, PlanError> {
+        // For now, create basic aggregate functions
+        // TODO: Parse actual aggregate functions from SELECT list
+        let aggregate_functions = vec![
+            AggregateFunction::Count,
+        ];
+
+        Ok(ExecutionPlan::GroupBy {
+            input: Box::new(input),
+            group_expressions: group_exprs,
+            aggregate_functions,
+        })
+    }
+
+    /// Check if SELECT list contains aggregate functions
+    fn contains_aggregate_functions(&self, select_list: &SelectList) -> bool {
+        match select_list {
+            SelectList::Wildcard => false,
+            SelectList::Expressions(expressions) => {
+                expressions.iter().any(|select_expr| {
+                    self.expression_contains_aggregate(&select_expr.expr)
+                })
+            }
+        }
+    }
+
+    /// Check if an expression contains aggregate functions (recursively)
+    fn expression_contains_aggregate(&self, expr: &Expression) -> bool {
+        match expr {
+            Expression::FunctionCall { name, .. } => {
+                // Check if this is an aggregate function
+                matches!(name.to_uppercase().as_str(), "COUNT" | "SUM" | "AVG" | "MIN" | "MAX")
+            }
+            // For other expression types, we can add recursive checks if needed
+            _ => false
+        }
+    }
+
+    /// Extract aggregate functions from SELECT list
+    fn extract_aggregate_functions(&self, select_list: &SelectList) -> Vec<AggregateFunction> {
+        let mut functions = Vec::new();
+        
+        match select_list {
+            SelectList::Wildcard => {},
+            SelectList::Expressions(expressions) => {
+                for select_expr in expressions {
+                    if let Expression::FunctionCall { name, args } = &select_expr.expr {
+                        match name.to_uppercase().as_str() {
+                            "COUNT" => functions.push(AggregateFunction::Count),
+                            "SUM" => {
+                                if let Some(Expression::Column(col)) = args.get(0) {
+                                    functions.push(AggregateFunction::Sum(col.clone()));
+                                }
+                            }
+                            "AVG" => {
+                                if let Some(Expression::Column(col)) = args.get(0) {
+                                    functions.push(AggregateFunction::Avg(col.clone()));
+                                }
+                            }
+                            "MIN" => {
+                                if let Some(Expression::Column(col)) = args.get(0) {
+                                    functions.push(AggregateFunction::Min(col.clone()));
+                                }
+                            }
+                            "MAX" => {
+                                if let Some(Expression::Column(col)) = args.get(0) {
+                                    functions.push(AggregateFunction::Max(col.clone()));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        
+        functions
+    }
+
+    /// Plan a SELECT statement (legacy method for compatibility)
+    fn plan_select(
+        &self,
+        select_list: SelectList,
+        from_clause: Option<FromClause>,
+        where_clause: Option<Expression>,
+        table_schemas: &HashMap<String, Schema>,
+        expression_types: &HashMap<String, DataType>,
+    ) -> Result<ExecutionPlan, PlanError> {
+        self.plan_select_complete(
+            select_list,
+            from_clause,
+            where_clause,
+            None,    // group_by
+            None,    // having
+            None,    // order_by
+            None,    // limit
+            None,    // offset
+            table_schemas,
+            expression_types,
+        )
     }
 
     /// Plan FROM clause
@@ -380,8 +545,23 @@ impl QueryPlanner {
             })
             .collect();
 
+        // Extract primary key column indices
+        let mut primary_key_columns = Vec::new();
+        for (i, col) in columns.iter().enumerate() {
+            if col.primary_key {
+                primary_key_columns.push(i);
+            }
+        }
+
+        let primary_key = if primary_key_columns.is_empty() {
+            None
+        } else {
+            Some(primary_key_columns)
+        };
+
         Ok(Schema {
             columns: column_defs,
+            primary_key,
         })
     }
 
@@ -471,6 +651,7 @@ mod tests {
                     default: None,
                 },
             ],
+            primary_key: None, // Test schema without primary key
         };
 
         catalog.add_table("users".to_string(), users_schema);
@@ -502,7 +683,7 @@ mod tests {
     #[test]
     fn test_plan_drop_table() {
         let mut catalog = MemoryCatalog::new();
-        catalog.add_table("test".to_string(), Schema { columns: vec![] });
+        catalog.add_table("test".to_string(), Schema { columns: vec![], primary_key: None });
 
         let analyzer = SemanticAnalyzer::new(&catalog);
         let planner = QueryPlanner::new();

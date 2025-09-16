@@ -1,6 +1,10 @@
-# MiniDB - Rust数据库系统
+# 🗃️ MiniDB - Rust数据库系统
 
-一个用Rust构建的小型数据库系统，用于学习数据库内核技术。
+[![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+
+一个用Rust构建的完整数据库系统，实现了SQL编译器、存储引擎和查询执行器。本项目旨在通过实际代码演示数据库内核的核心概念和技术。
 
 ## 🚀 项目状态
 
@@ -201,32 +205,41 @@ cargo doc --open
 5. **网络层** - 实现数据库协议，支持多客户端连接
 6. **查询优化器** - 成本估算、索引选择、执行计划优化
 
-## 📖 学习资源
+## � 项目文档
+
+| 文档类型 | 文件名 | 描述 |
+|---------|--------|------|
+| **核心文档** | `README.md` | 项目概述和快速开始 |
+| **完整测试** | `COMPLETE_TEST_DOCUMENTATION.md` | 全面的功能测试用例 |
+| **快速测试** | `QUICK_TEST_SCRIPT.md` | 5分钟快速验证功能 |
+| **手动测试** | `MANUAL_TEST_GUIDE.md` | 交互式测试指南 |
+| **技术文档** | `SQL_COMPILER_GUIDE.md` | SQL编译器技术细节 |
+| **数据类型** | `DATA_TYPES_GUIDE.md` | 支持的数据类型说明 |
+| **项目结构** | `PROJECT_STRUCTURE.md` | 代码组织和架构 |
+
+## �📖 学习资源
 
 这个项目适合学习：
-- Rust系统编程
-- 数据库内核设计
-- 编译器前端技术
-- 查询处理算法
+- Rust系统编程和内存管理
+- 数据库内核设计和实现
+- 编译器前端技术（词法/语法分析）
+- 存储引擎和缓存管理
+- 查询处理和执行算法
 
 ## 🤝 贡献
 
-欢迎提交Issue和Pull Request！
+欢迎提交Issue和Pull Request！请确保：
+1. 运行 `cargo test` 通过所有测试
+2. 遵循Rust代码规范
+3. 更新相关文档
 
 ## 📄 许可证
 
-MIT License
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ---
 
-**当前版本**: v0.2.0  
-**开发状态**: 核心数据库功能完成，支持基本SQL操作  
-**测试状态**: 70/70 通过 ✅
-
-**支持的操作:**
-- ✅ CREATE TABLE / DROP TABLE
-- ✅ INSERT INTO 
-- ✅ SELECT * FROM (基本查询)
-- ✅ 表管理和错误处理
-- ⚠️ UPDATE / DELETE (部分支持)
-- 🚧 JOIN / GROUP BY / ORDER BY (待开发)
+**当前版本**: v1.0.0  
+**开发状态**: 核心功能完成，支持完整SQL操作  
+**测试状态**: 72/72 通过 ✅  
+**文档状态**: 完整 �

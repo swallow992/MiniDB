@@ -352,10 +352,10 @@ fn print_error(error: &Box<dyn std::error::Error>, duration: std::time::Duration
     let error_str = error.to_string().to_lowercase();
     if error_str.contains("parse") {
         println!("💡 提示: 请检查SQL语法是否正确");
-    } else if error_str.contains("table") && error_str.contains("not found") {
-        println!("💡 提示: 表不存在，请使用 \\d 查看可用的表");
     } else if error_str.contains("column") && error_str.contains("not found") {
         println!("💡 提示: 列不存在，请检查列名是否正确");
+    } else if error_str.contains("table") && error_str.contains("not found") {
+        println!("💡 提示: 表不存在，请使用 \\d 查看可用的表");
     }
 }
 

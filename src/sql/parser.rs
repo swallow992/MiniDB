@@ -648,12 +648,62 @@ impl Parser {
             None
         };
         
-        // TODO: Parse GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET
-        let group_by = None;
+        // Parse GROUP BY clause
+        let group_by = if self.current_token == Token::Group {
+            self.advance()?;
+            self.expect(Token::By)?;
+            Some(self.parse_group_by_list()?)
+        } else {
+            None
+        };
+        
+        // TODO: Parse HAVING
         let having = None;
-        let order_by = None;
-        let limit = None;
-        let offset = None;
+        
+        // Parse ORDER BY clause
+        let order_by = if self.current_token == Token::Order {
+            self.advance()?;
+            self.expect(Token::By)?;
+            Some(self.parse_order_by_list()?)
+        } else {
+            None
+        };
+        
+        // Parse LIMIT clause
+        let limit = if self.current_token == Token::Limit {
+            self.advance()?;
+            match &self.current_token {
+                Token::Integer(n) => {
+                    let limit_value = *n as u64;
+                    self.advance()?;
+                    Some(limit_value)
+                }
+                _ => return Err(ParseError::UnexpectedToken {
+                    expected: "integer".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        } else {
+            None
+        };
+        
+        // Parse OFFSET clause  
+        let offset = if self.current_token == Token::Offset {
+            self.advance()?;
+            match &self.current_token {
+                Token::Integer(n) => {
+                    let offset_value = *n as u64;
+                    self.advance()?;
+                    Some(offset_value)
+                }
+                _ => return Err(ParseError::UnexpectedToken {
+                    expected: "integer".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        } else {
+            None
+        };
         
         Ok(Statement::Select {
             select_list,
@@ -1096,8 +1146,35 @@ impl Parser {
                 let name = name.clone();
                 self.advance()?;
                 
+                // Check for function call (name followed by left paren)
+                if self.current_token == Token::LeftParen {
+                    self.advance()?;
+                    let mut args = Vec::new();
+                    
+                    // Handle empty argument list
+                    if self.current_token != Token::RightParen {
+                        loop {
+                            // Handle special case for COUNT(*)
+                            if self.current_token == Token::Multiply {
+                                self.advance()?;
+                                args.push(Expression::Literal(Value::Varchar("*".to_string())));
+                            } else {
+                                args.push(self.parse_expression()?);
+                            }
+                            
+                            if self.current_token == Token::Comma {
+                                self.advance()?;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    self.expect(Token::RightParen)?;
+                    Ok(Expression::FunctionCall { name, args })
+                } 
                 // Check for qualified column (table.column)
-                if self.current_token == Token::Dot {
+                else if self.current_token == Token::Dot {
                     self.advance()?;
                     if let Token::Identifier(column) = &self.current_token {
                         let column = column.clone();
@@ -1127,6 +1204,60 @@ impl Parser {
                 found: self.current_token.clone(),
             }),
         }
+    }
+
+    /// Parse ORDER BY clause list
+    fn parse_order_by_list(&mut self) -> Result<Vec<OrderByExpr>, ParseError> {
+        let mut order_exprs = Vec::new();
+        
+        loop {
+            // Parse the expression (usually a column name)
+            let expr = self.parse_expression()?;
+            
+            // Check for ASC/DESC
+            let desc = match &self.current_token {
+                Token::Desc => {
+                    self.advance()?;
+                    true
+                }
+                Token::Asc => {
+                    self.advance()?;
+                    false
+                }
+                _ => false, // Default to ASC
+            };
+            
+            order_exprs.push(OrderByExpr { expr, desc });
+            
+            // Check if there's a comma for multiple order expressions
+            if self.current_token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+        
+        Ok(order_exprs)
+    }
+
+    /// Parse GROUP BY clause list
+    fn parse_group_by_list(&mut self) -> Result<Vec<Expression>, ParseError> {
+        let mut group_exprs = Vec::new();
+        
+        loop {
+            // Parse the expression (usually a column name)
+            let expr = self.parse_expression()?;
+            group_exprs.push(expr);
+            
+            // Check if there's a comma for multiple group expressions
+            if self.current_token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+        
+        Ok(group_exprs)
     }
 }
 

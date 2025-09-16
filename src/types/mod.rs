@@ -124,6 +124,7 @@ pub struct ColumnDefinition {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Schema {
     pub columns: Vec<ColumnDefinition>,
+    pub primary_key: Option<Vec<usize>>, // Column indices that form the primary key
 }
 
 /// Errors related to type operations
@@ -292,7 +293,18 @@ impl Tuple {
 impl Schema {
     /// Create a new schema with the given column definitions
     pub fn new(columns: Vec<ColumnDefinition>) -> Self {
-        Self { columns }
+        Self { 
+            columns,
+            primary_key: None,
+        }
+    }
+    
+    /// Create a new schema with primary key
+    pub fn new_with_primary_key(columns: Vec<ColumnDefinition>, primary_key: Vec<usize>) -> Self {
+        Self {
+            columns,
+            primary_key: Some(primary_key),
+        }
     }
 
     /// Find a column by name

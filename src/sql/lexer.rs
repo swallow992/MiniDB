@@ -48,6 +48,8 @@ pub enum Token {
     Distinct,
     Order,
     By,
+    Asc,
+    Desc,
     Group,
     Having,
     Limit,
@@ -211,6 +213,8 @@ impl Lexer {
             ("DISTINCT", Token::Distinct),
             ("ORDER", Token::Order),
             ("BY", Token::By),
+            ("ASC", Token::Asc),
+            ("DESC", Token::Desc),
             ("GROUP", Token::Group),
             ("HAVING", Token::Having),
             ("LIMIT", Token::Limit),
@@ -352,10 +356,19 @@ impl Lexer {
 
         while let Some(ch) = self.current_char {
             if ch == '\'' {
-                self.advance(); // skip closing quote
-                return Ok(Token::String(string_value));
+                // Check if it's an escaped single quote (SQL standard: '' represents ')
+                if self.peek() == Some('\'') {
+                    // This is an escaped single quote, add one ' to the string
+                    string_value.push('\'');
+                    self.advance(); // skip first '
+                    self.advance(); // skip second '
+                } else {
+                    // This is the closing quote
+                    self.advance(); // skip closing quote
+                    return Ok(Token::String(string_value));
+                }
             } else if ch == '\\' {
-                // Handle escape sequences
+                // Handle backslash escape sequences (non-standard but commonly supported)
                 self.advance();
                 match self.current_char {
                     Some('n') => string_value.push('\n'),
@@ -622,6 +635,8 @@ impl Lexer {
             | Token::Distinct
             | Token::Order
             | Token::By
+            | Token::Asc
+            | Token::Desc
             | Token::Group
             | Token::Having
             | Token::Limit
@@ -746,6 +761,40 @@ mod tests {
         assert_eq!(
             lexer.next_token().unwrap(),
             Token::String("test\nstring".to_string())
+        );
+        assert_eq!(lexer.next_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_string_escaping() {
+        // Test SQL standard single quote escaping
+        let mut lexer = Lexer::new("'O''Connor' 'It''s a test' 'Can''t stop'");
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("O'Connor".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("It's a test".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("Can't stop".to_string())
+        );
+        assert_eq!(lexer.next_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_complex_string_escaping() {
+        // Test mixed escaping
+        let mut lexer = Lexer::new("'O''Connor & Smith-Johnson' 'Test\\nwith''quote'");
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("O'Connor & Smith-Johnson".to_string())
+        );
+        assert_eq!(
+            lexer.next_token().unwrap(),
+            Token::String("Test\nwith'quote".to_string())
         );
         assert_eq!(lexer.next_token().unwrap(), Token::EOF);
     }

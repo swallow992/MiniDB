@@ -958,6 +958,7 @@ mod tests {
                     default: None,
                 },
             ],
+            primary_key: Some(vec![0]), // id column is primary key
         };
 
         catalog.add_table("users".to_string(), users_schema);
@@ -979,7 +980,7 @@ mod tests {
     #[test]
     fn test_analyze_duplicate_table() {
         let mut catalog = MemoryCatalog::new();
-        catalog.add_table("test".to_string(), Schema { columns: vec![] });
+        catalog.add_table("test".to_string(), Schema { columns: vec![], primary_key: None });
 
         let analyzer = SemanticAnalyzer::new(&catalog);
         let stmt = parse_sql("CREATE TABLE test (id INT)").unwrap();
