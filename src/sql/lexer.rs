@@ -70,6 +70,8 @@ pub enum Token {
     Else,
     End,
     If,
+    Explain,
+    Unique,
 
     // Data types
     Int,
@@ -235,6 +237,8 @@ impl Lexer {
             ("ELSE", Token::Else),
             ("END", Token::End),
             ("IF", Token::If),
+            ("EXPLAIN", Token::Explain),
+            ("UNIQUE", Token::Unique),
             ("INT", Token::Int),
             ("INTEGER", Token::Int), // Support both INT and INTEGER
             ("BIGINT", Token::BigInt),
@@ -657,6 +661,8 @@ impl Lexer {
             | Token::Else
             | Token::End
             | Token::If
+            | Token::Explain
+            | Token::Unique
             | Token::Int
             | Token::BigInt
             | Token::Float32

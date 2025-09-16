@@ -1,0 +1,85 @@
+{
+  "schema": {
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 65535
+        },
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "email",
+        "data_type": {
+          "Varchar": 65535
+        },
+        "nullable": true,
+        "default": null
+      },
+      {
+        "name": "age",
+        "data_type": "Integer",
+        "nullable": true,
+        "default": null
+      }
+    ],
+    "primary_key": null
+  },
+  "rows": [
+    {
+      "values": [
+        {
+          "Integer": 1
+        },
+        {
+          "Varchar": "Alice"
+        },
+        {
+          "Varchar": "alice@example.com"
+        },
+        {
+          "Integer": 25
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 2
+        },
+        {
+          "Varchar": "Bob"
+        },
+        {
+          "Varchar": "bob@example.com"
+        },
+        {
+          "Integer": 30
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 3
+        },
+        {
+          "Varchar": "Charlie"
+        },
+        {
+          "Varchar": "charlie@example.com"
+        },
+        {
+          "Integer": 28
+        }
+      ]
+    }
+  ]
+}

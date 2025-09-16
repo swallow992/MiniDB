@@ -1,0 +1,140 @@
+{
+  "schema": {
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 65535
+        },
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "department",
+        "data_type": {
+          "Varchar": 65535
+        },
+        "nullable": true,
+        "default": null
+      },
+      {
+        "name": "salary",
+        "data_type": "Integer",
+        "nullable": true,
+        "default": null
+      },
+      {
+        "name": "hire_date",
+        "data_type": {
+          "Varchar": 65535
+        },
+        "nullable": true,
+        "default": null
+      }
+    ],
+    "primary_key": null
+  },
+  "rows": [
+    {
+      "values": [
+        {
+          "Integer": 1
+        },
+        {
+          "Varchar": "Alice Johnson"
+        },
+        {
+          "Varchar": "Engineering"
+        },
+        {
+          "Integer": 75000
+        },
+        {
+          "Varchar": "2023-01-15"
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 2
+        },
+        {
+          "Varchar": "Bob Smith"
+        },
+        {
+          "Varchar": "Sales"
+        },
+        {
+          "Integer": 65000
+        },
+        {
+          "Varchar": "2023-02-20"
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 3
+        },
+        {
+          "Varchar": "Charlie Brown"
+        },
+        {
+          "Varchar": "Engineering"
+        },
+        {
+          "Integer": 80000
+        },
+        {
+          "Varchar": "2022-11-10"
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 4
+        },
+        {
+          "Varchar": "Diana Prince"
+        },
+        {
+          "Varchar": "Marketing"
+        },
+        {
+          "Integer": 70000
+        },
+        {
+          "Varchar": "2023-03-05"
+        }
+      ]
+    },
+    {
+      "values": [
+        {
+          "Integer": 5
+        },
+        {
+          "Varchar": "Edward Norton"
+        },
+        {
+          "Varchar": "Sales"
+        },
+        {
+          "Integer": 68000
+        },
+        {
+          "Varchar": "2023-01-25"
+        }
+      ]
+    }
+  ]
+}

@@ -376,6 +376,21 @@ impl<'a> SemanticAnalyzer<'a> {
                     &mut expression_types,
                 )?;
             }
+            Statement::CreateIndex { table_name, .. } => {
+                // 验证表是否存在
+                if !self.catalog.table_exists(table_name) {
+                    return Err(SemanticError::TableNotFound {
+                        table: table_name.clone(),
+                        position: None,
+                    });
+                }
+            }
+            Statement::DropIndex { .. } => {
+                // 索引删除的语义分析（暂时简单处理）
+            }
+            Statement::Explain { .. } => {
+                // EXPLAIN语句不需要特殊的语义分析
+            }
         }
 
         Ok(AnalyzedStatement {

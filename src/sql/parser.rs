@@ -53,6 +53,26 @@ pub enum Statement {
         table_name: String,
         where_clause: Option<Expression>,
     },
+    
+    /// CREATE INDEX statement
+    CreateIndex {
+        index_name: String,
+        table_name: String,
+        columns: Vec<String>,
+        is_unique: bool,
+    },
+    
+    /// DROP INDEX statement
+    DropIndex {
+        index_name: String,
+        table_name: String,
+        if_exists: bool,
+    },
+    
+    /// EXPLAIN statement
+    Explain {
+        statement: Box<Statement>,
+    },
 }
 
 /// Column definition in CREATE TABLE
@@ -278,6 +298,7 @@ impl Parser {
             Token::Insert => self.parse_insert_statement(),
             Token::Update => self.parse_update_statement(),
             Token::Delete => self.parse_delete_statement(),
+            Token::Explain => self.parse_explain_statement(),
             Token::EOF => Err(ParseError::UnexpectedEof),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "SQL statement".to_string(),
@@ -292,8 +313,9 @@ impl Parser {
         
         match &self.current_token {
             Token::Table => self.parse_create_table(),
+            Token::Index | Token::Unique => self.parse_create_index(),
             _ => Err(ParseError::UnexpectedToken {
-                expected: "TABLE".to_string(),
+                expected: "TABLE or INDEX".to_string(),
                 found: self.current_token.clone(),
             }),
         }
@@ -595,9 +617,106 @@ impl Parser {
         })
     }
     
+    /// Parse CREATE INDEX statement
+    fn parse_create_index(&mut self) -> Result<Statement, ParseError> {
+        let is_unique = if self.current_token == Token::Unique {
+            self.advance()?;
+            self.expect(Token::Index)?;
+            true
+        } else {
+            self.expect(Token::Index)?;
+            false
+        };
+        
+        let index_name = match &self.current_token {
+            Token::Identifier(name) => {
+                let name = name.clone();
+                self.advance()?;
+                name
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "index name".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        };
+        
+        self.expect(Token::On)?;
+        
+        let table_name = match &self.current_token {
+            Token::Identifier(name) => {
+                let name = name.clone();
+                self.advance()?;
+                name
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "table name".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        };
+        
+        self.expect(Token::LeftParen)?;
+        
+        let mut columns = Vec::new();
+        loop {
+            match &self.current_token {
+                Token::Identifier(name) => {
+                    columns.push(name.clone());
+                    self.advance()?;
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "column name".to_string(),
+                        found: self.current_token.clone(),
+                    })
+                }
+            }
+            
+            match &self.current_token {
+                Token::Comma => {
+                    self.advance()?;
+                    continue;
+                }
+                Token::RightParen => {
+                    self.advance()?;
+                    break;
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: ", or )".to_string(),
+                        found: self.current_token.clone(),
+                    })
+                }
+            }
+        }
+        
+        Ok(Statement::CreateIndex {
+            index_name,
+            table_name,
+            columns,
+            is_unique,
+        })
+    }
+    
     /// Parse DROP statement
     fn parse_drop_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Drop)?;
+        
+        match &self.current_token {
+            Token::Table => self.parse_drop_table(),
+            Token::Index => self.parse_drop_index(),
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "TABLE or INDEX".to_string(),
+                found: self.current_token.clone(),
+            }),
+        }
+    }
+    
+    /// Parse DROP TABLE statement
+    fn parse_drop_table(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Table)?;
         
         let if_exists = if self.current_token == Token::If {
@@ -626,6 +745,64 @@ impl Parser {
             table_name,
             if_exists,
         })
+    }
+    
+    /// Parse DROP INDEX statement
+    fn parse_drop_index(&mut self) -> Result<Statement, ParseError> {
+        self.expect(Token::Index)?;
+        
+        let if_exists = if self.current_token == Token::If {
+            self.advance()?;
+            self.expect(Token::Exists)?;
+            true
+        } else {
+            false
+        };
+        
+        let index_name = match &self.current_token {
+            Token::Identifier(name) => {
+                let name = name.clone();
+                self.advance()?;
+                name
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "index name".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        };
+        
+        self.expect(Token::On)?;
+        
+        let table_name = match &self.current_token {
+            Token::Identifier(name) => {
+                let name = name.clone();
+                self.advance()?;
+                name
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "table name".to_string(),
+                    found: self.current_token.clone(),
+                })
+            }
+        };
+        
+        Ok(Statement::DropIndex {
+            index_name,
+            table_name,
+            if_exists,
+        })
+    }
+    
+    /// Parse EXPLAIN statement
+    fn parse_explain_statement(&mut self) -> Result<Statement, ParseError> {
+        self.expect(Token::Explain)?;
+        
+        let statement = Box::new(self.parse_statement()?);
+        
+        Ok(Statement::Explain { statement })
     }
     
     /// Parse SELECT statement

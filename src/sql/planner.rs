@@ -96,6 +96,26 @@ pub enum ExecutionPlan {
         group_expressions: Vec<Expression>,
         aggregate_functions: Vec<AggregateFunction>,
     },
+
+    /// Create an index
+    CreateIndex {
+        index_name: String,
+        table_name: String,
+        columns: Vec<String>,
+        is_unique: bool,
+    },
+
+    /// Drop an index
+    DropIndex {
+        index_name: String,
+        table_name: String,
+        if_exists: bool,
+    },
+
+    /// Explain a query plan
+    Explain {
+        statement: Box<Statement>,
+    },
 }
 
 /// Column projection specification
@@ -260,6 +280,32 @@ impl QueryPlanner {
                     filter: where_clause,
                 })
             }
+
+            Statement::CreateIndex {
+                index_name,
+                table_name,
+                columns,
+                is_unique,
+            } => Ok(ExecutionPlan::CreateIndex {
+                index_name,
+                table_name,
+                columns,
+                is_unique,
+            }),
+
+            Statement::DropIndex {
+                index_name,
+                table_name,
+                if_exists,
+            } => Ok(ExecutionPlan::DropIndex {
+                index_name,
+                table_name,
+                if_exists,
+            }),
+
+            Statement::Explain { statement } => Ok(ExecutionPlan::Explain {
+                statement: Box::new(*statement),
+            }),
         }
     }
 
