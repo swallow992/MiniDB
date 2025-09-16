@@ -109,7 +109,7 @@ fn show_help() {
     println!("  \\version          显示版本信息");
     println!("  clear, \\c         清空屏幕");
     println!();
-    println!("SQL 命令:");
+    println!("基础 SQL 命令:");
     println!("  CREATE TABLE name (column_definitions...)");
     println!("  INSERT INTO name VALUES (...)");
     println!("  SELECT columns FROM name [WHERE condition]");
@@ -117,11 +117,32 @@ fn show_help() {
     println!("  DELETE FROM name [WHERE condition]");
     println!("  DROP TABLE name");
     println!();
-    println!("示例:");
+    println!("高级 SQL 功能:");
+    println!("  SELECT ... ORDER BY column [ASC|DESC]     - 排序查询");
+    println!("  SELECT ... LIMIT number [OFFSET number]   - 分页查询");
+    println!("  SELECT ... GROUP BY column                - 分组查询");
+    println!("  SELECT COUNT(*), SUM(col), AVG(col)...    - 聚合函数");
+    println!("  SELECT ... WHERE col IN (values)          - 条件查询");
+    println!();
+    println!("支持的聚合函数:");
+    println!("  COUNT(*)         计算行数");
+    println!("  COUNT(column)    计算非空值数量");
+    println!("  SUM(column)      求和");
+    println!("  AVG(column)      平均值");
+    println!("  MAX(column)      最大值");
+    println!("  MIN(column)      最小值");
+    println!();
+    println!("基础示例:");
     println!("  CREATE TABLE users (id INT, name VARCHAR(50), age INT);");
     println!("  INSERT INTO users VALUES (1, 'Alice', 25);");
     println!("  SELECT * FROM users;");
     println!("  SELECT name FROM users WHERE age > 20;");
+    println!();
+    println!("高级示例:");
+    println!("  SELECT * FROM users ORDER BY age DESC;");
+    println!("  SELECT * FROM users LIMIT 5 OFFSET 10;");
+    println!("  SELECT department, COUNT(*) FROM users GROUP BY department;");
+    println!("  SELECT AVG(age), MAX(age) FROM users WHERE age > 25;");
     println!();
 }
 
