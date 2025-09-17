@@ -1,7 +1,7 @@
-//! Database engine tests
+//! 数据库引擎测试
 //!
-//! Tests for the database engine functionality including
-//! table creation, data insertion, and basic queries.
+//! 测试数据库引擎功能，包括
+//! 表创建、数据插入和基本查询。
 
 use super::database::{Database, ExecutionError};
 use crate::sql::parse_sql;
@@ -9,7 +9,7 @@ use crate::types::{DataType, Value};
 use std::fs;
 use std::path::Path;
 
-/// Test SQL parsing directly
+/// 直接测试 SQL 解析
 #[test]
 fn test_sql_parsing() {
     // Test simple SQL statements
@@ -34,7 +34,7 @@ fn test_sql_parsing() {
     }
 }
 
-/// Test database creation and basic operations
+/// 测试数据库创建和基本操作
 #[test]
 fn test_database_creation() {
     let test_dir = "test_db_creation";
@@ -47,7 +47,7 @@ fn test_database_creation() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test CREATE TABLE functionality
+/// 测试 CREATE TABLE 功能
 #[test]
 fn test_create_table() {
     let test_dir = "test_db_create_table";
@@ -76,7 +76,7 @@ fn test_create_table() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test DROP TABLE functionality
+/// 测试 DROP TABLE 功能
 #[test]
 fn test_drop_table() {
     let test_dir = "test_db_drop_table";
@@ -104,7 +104,7 @@ fn test_drop_table() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test INSERT functionality
+/// 测试 INSERT 功能
 #[test]
 fn test_insert_data() {
     let test_dir = "test_db_insert";
@@ -127,7 +127,7 @@ fn test_insert_data() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test error handling for non-existent table
+/// 测试不存在表的错误处理
 #[test]
 fn test_table_not_found() {
     let test_dir = "test_db_not_found";
@@ -151,7 +151,7 @@ fn test_table_not_found() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test duplicate table creation
+/// 测试重复表创建
 #[test]
 fn test_duplicate_table() {
     let test_dir = "test_db_duplicate";
@@ -179,7 +179,7 @@ fn test_duplicate_table() {
     let _ = fs::remove_dir_all(test_dir);
 }
 
-/// Test multiple table operations
+/// 测试多表操作
 #[test]
 fn test_multiple_tables() {
     let test_dir = "test_db_multiple";

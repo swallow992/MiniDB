@@ -94,7 +94,7 @@ impl Table {
         Ok(())
     }
     
-    /// Drop an index
+    /// 删除索引
     pub fn drop_index(&mut self, index_name: &str) -> Result<(), TableError> {
         if index_name == "PRIMARY" {
             self.primary_index = None;
@@ -108,7 +108,7 @@ impl Table {
         Ok(())
     }
     
-    /// Insert a tuple and update all indices
+    /// 插入元组并更新所有索引
     pub fn insert_with_indices(&mut self, tuple: &Tuple, record_id: RecordId) -> Result<(), TableError> {
         // Update primary index
         if self.primary_index.is_some() {
@@ -139,7 +139,7 @@ impl Table {
         Ok(())
     }
     
-    /// Delete a tuple and update all indices
+    /// 删除元组并更新所有索引
     pub fn delete_from_indices(&mut self, tuple: &Tuple) -> Result<(), TableError> {
         // Update primary index
         if self.primary_index.is_some() {
@@ -170,7 +170,7 @@ impl Table {
         Ok(())
     }
     
-    /// Get index by name
+    /// 按名称获取索引
     pub fn get_index(&self, index_name: &str) -> Option<&BPlusTreeIndex> {
         if index_name == "PRIMARY" {
             self.primary_index.as_ref()
@@ -179,7 +179,7 @@ impl Table {
         }
     }
     
-    /// Get mutable index by name
+    /// 按名称获取可变索引
     pub fn get_index_mut(&mut self, index_name: &str) -> Option<&mut BPlusTreeIndex> {
         if index_name == "PRIMARY" {
             self.primary_index.as_mut()
@@ -188,7 +188,7 @@ impl Table {
         }
     }
     
-    /// List all index names
+    /// 列出所有索引名称
     pub fn list_indices(&self) -> Vec<String> {
         let mut indices = Vec::new();
         if self.primary_index.is_some() {
@@ -198,14 +198,14 @@ impl Table {
         indices
     }
     
-    /// Get index metadata
+    /// 获取索引元数据
     pub fn get_index_metadata(&self, index_name: &str) -> Option<&(Vec<usize>, bool)> {
         self.index_metadata.get(index_name)
     }
     
-    // Helper methods
+    // 辅助方法
     
-    /// Resolve column names to indices
+    /// 将列名解析为索引
     fn resolve_column_indices(&self, column_names: &[String]) -> Result<Vec<usize>, TableError> {
         let mut indices = Vec::new();
         for column_name in column_names {
@@ -217,7 +217,7 @@ impl Table {
         Ok(indices)
     }
     
-    /// Extract key values from tuple based on column indices (static version)
+    /// 根据列索引从元组中提取键值（静态版本）
     fn extract_key_values_static(tuple: &Tuple, column_indices: &[usize]) -> Result<IndexKey, TableError> {
         let values = column_indices.iter()
             .map(|&idx| {

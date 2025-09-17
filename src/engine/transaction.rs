@@ -1,10 +1,10 @@
-//! Transaction management
+//! 事务管理
 //!
-//! Simple transaction manager with basic ACID properties:
-//! - Atomicity: All operations in a transaction succeed or all fail
-//! - Consistency: Database constraints are maintained
-//! - Isolation: Transactions are isolated from each other (basic read-write locks)
-//! - Durability: Committed transactions are persistent
+//! 具有基本 ACID 属性的简单事务管理器：
+//! - 原子性：事务中的所有操作要么全部成功，要么全部失败
+//! - 一致性：维护数据库约束
+//! - 隔离性：事务之间相互隔离（基本的读写锁）
+//! - 持久性：已提交的事务是持久的
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};
@@ -13,7 +13,7 @@ use thiserror::Error;
 
 pub type TransactionId = u64;
 
-/// Transaction state
+/// 事务状态
 #[derive(Debug, Clone, PartialEq)]
 pub enum TransactionState {
     Active,
@@ -22,7 +22,7 @@ pub enum TransactionState {
     Aborted,
 }
 
-/// Transaction isolation levels
+/// 事务隔离级别
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IsolationLevel {
     ReadUncommitted,
@@ -31,14 +31,14 @@ pub enum IsolationLevel {
     Serializable,
 }
 
-/// Lock types for concurrency control
+/// 并发控制的锁类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum LockType {
     SharedRead,
     ExclusiveWrite,
 }
 
-/// Lock request
+/// 锁请求
 #[derive(Debug, Clone)]
 pub struct LockRequest {
     pub transaction_id: TransactionId,
@@ -46,23 +46,23 @@ pub struct LockRequest {
     pub lock_type: LockType,
 }
 
-/// Transaction metadata
+/// 事务元数据
 pub struct Transaction {
-    /// Unique transaction ID
+    /// 唯一事务ID
     pub id: TransactionId,
-    /// Current state
+    /// 当前状态
     pub state: TransactionState,
-    /// Isolation level
+    /// 隔离级别
     pub isolation_level: IsolationLevel,
-    /// Start timestamp
+    /// 开始时间戳
     pub start_time: u64,
-    /// Held locks
+    /// 持有的锁
     pub held_locks: HashSet<String>,
-    /// Operations log for rollback
+    /// 用于回滚的操作日志
     pub operations_log: Vec<TransactionOperation>,
 }
 
-/// Transaction operation for logging and rollback
+/// 用于日志记录和回滚的事务操作
 #[derive(Debug, Clone)]
 pub enum TransactionOperation {
     Insert {
@@ -82,27 +82,27 @@ pub enum TransactionOperation {
     },
 }
 
-/// Lock manager for concurrency control
+/// 并发控制的锁管理器
 pub struct LockManager {
-    /// Resource locks: resource_id -> (transaction_id, lock_type)
+    /// 资源锁：resource_id -> (transaction_id, lock_type)
     locks: Arc<Mutex<HashMap<String, (TransactionId, LockType)>>>,
-    /// Wait-for graph for deadlock detection
+    /// 死锁检测的等待图
     wait_for: Arc<Mutex<HashMap<TransactionId, HashSet<TransactionId>>>>,
 }
 
-/// Transaction manager
+/// 事务管理器
 pub struct TransactionManager {
-    /// Active transactions
+    /// 活跃事务
     transactions: Arc<RwLock<HashMap<TransactionId, Transaction>>>,
-    /// Next transaction ID
+    /// 下一个事务ID
     next_txn_id: Arc<Mutex<TransactionId>>,
-    /// Lock manager
+    /// 锁管理器
     lock_manager: LockManager,
-    /// Default isolation level
+    /// 默认隔离级别
     default_isolation_level: IsolationLevel,
 }
 
-/// Transaction errors
+/// 事务错误
 #[derive(Error, Debug)]
 pub enum TransactionError {
     #[error("Transaction not found: {id}")]
@@ -144,7 +144,7 @@ impl LockManager {
         }
     }
     
-    /// Acquire a lock on a resource
+    /// 获取资源上的锁
     pub fn acquire_lock(&self, request: LockRequest) -> Result<(), TransactionError> {
         let mut locks = self.locks.lock().unwrap();
         
@@ -186,13 +186,13 @@ impl LockManager {
         }
     }
     
-    /// Release all locks held by a transaction
+    /// 释放事务持有的所有锁
     pub fn release_locks(&self, transaction_id: TransactionId) {
         let mut locks = self.locks.lock().unwrap();
         locks.retain(|_, (holder, _)| *holder != transaction_id);
     }
     
-    /// Check for deadlocks (simplified detection)
+    /// 检查死锁（简化检测）
     pub fn detect_deadlock(&self, _transaction_id: TransactionId) -> bool {
         // Simplified deadlock detection - in a real system this would be more sophisticated
         false
@@ -216,12 +216,12 @@ impl Transaction {
         }
     }
     
-    /// Add an operation to the transaction log
+    /// 将操作添加到事务日志
     pub fn log_operation(&mut self, operation: TransactionOperation) {
         self.operations_log.push(operation);
     }
     
-    /// Check if transaction can proceed based on isolation level
+    /// 根据隔离级别检查事务是否可以继续
     pub fn can_read(&self, _resource: &str, _writer_txn: Option<TransactionId>) -> bool {
         match self.isolation_level {
             IsolationLevel::ReadUncommitted => true,
@@ -242,12 +242,12 @@ impl TransactionManager {
         }
     }
     
-    /// Begin a new transaction
+    /// 开始新事务
     pub fn begin_transaction(&self) -> Result<TransactionId, TransactionError> {
         self.begin_transaction_with_isolation(self.default_isolation_level)
     }
     
-    /// Begin a transaction with specific isolation level
+    /// 开始具有特定隔离级别的事务
     pub fn begin_transaction_with_isolation(&self, isolation_level: IsolationLevel) -> Result<TransactionId, TransactionError> {
         let mut next_id = self.next_txn_id.lock().unwrap();
         let txn_id = *next_id;
@@ -262,7 +262,7 @@ impl TransactionManager {
         Ok(txn_id)
     }
     
-    /// Commit a transaction
+    /// 提交事务
     pub fn commit_transaction(&self, txn_id: TransactionId) -> Result<(), TransactionError> {
         let mut transactions = self.transactions.write().unwrap();
         
@@ -298,7 +298,7 @@ impl TransactionManager {
         }
     }
     
-    /// Rollback a transaction
+    /// 回滚事务
     pub fn rollback_transaction(&self, txn_id: TransactionId) -> Result<(), TransactionError> {
         let mut transactions = self.transactions.write().unwrap();
         
