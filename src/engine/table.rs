@@ -1,4 +1,4 @@
-//! Table management
+//! 表管理
 
 use crate::storage::index::{BPlusTreeIndex, Index, IndexKey, RecordId, IndexError};
 use crate::types::{Schema, Tuple};
@@ -7,19 +7,19 @@ use thiserror::Error;
 
 pub type TableId = u32;
 
-/// Table with index support
+/// 支持索引的表
 pub struct Table {
-    /// Table identifier
+    /// 表标识符
     pub id: TableId,
-    /// Table name
+    /// 表名
     pub name: String,
-    /// Table schema
+    /// 表模式
     pub schema: Schema,
-    /// Primary index (if any)
+    /// 主索引（如果有的话）
     pub primary_index: Option<BPlusTreeIndex>,
-    /// Secondary indices: index_name -> index
+    /// 辅助索引：索引名 -> 索引
     pub secondary_indices: HashMap<String, BPlusTreeIndex>,
-    /// Index metadata: index_name -> (column_indices, is_unique)
+    /// 索引元数据：索引名 -> (列索引, 是否唯一)
     pub index_metadata: HashMap<String, (Vec<usize>, bool)>,
 }
 
@@ -45,7 +45,7 @@ pub enum TableError {
 }
 
 impl Table {
-    /// Create a new table
+    /// 创建一个新表
     pub fn new(id: TableId, name: String, schema: Schema) -> Self {
         Self {
             id,
@@ -57,7 +57,7 @@ impl Table {
         }
     }
     
-    /// Create a primary index on specified columns
+    /// 在指定列上创建主索引
     pub fn create_primary_index(&mut self, column_names: Vec<String>) -> Result<(), TableError> {
         let column_indices = self.resolve_column_indices(&column_names)?;
         let column_types = column_indices.iter()
@@ -71,7 +71,7 @@ impl Table {
         Ok(())
     }
     
-    /// Create a secondary index
+    /// 创建辅助索引
     pub fn create_index(
         &mut self, 
         index_name: String, 

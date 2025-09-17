@@ -1,8 +1,7 @@
-//! Query planner
+//! 查询规划器
 //!
-//! Converts analyzed SQL statements into executable query plans.
-//! The planner performs query optimization and generates a tree of
-//! operators that can be executed by the query executor.
+//! 将已分析的 SQL 语句转换为可执行的查询计划。
+//! 规划器执行查询优化并生成可由查询执行器执行的操作符树。
 
 use crate::engine::executor::AggregateFunction;
 use crate::sql::analyzer::AnalyzedStatement;
@@ -11,36 +10,36 @@ use crate::types::{DataType, Schema};
 use std::collections::HashMap;
 use thiserror::Error;
 
-/// Execution plan representing a tree of operators
+/// 表示操作符树的执行计划
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionPlan {
-    /// Scan a table sequentially
+    /// 顺序扫描表
     TableScan {
         table_name: String,
         schema: Schema,
         filter: Option<Expression>,
     },
 
-    /// Scan a table using an index
+    /// 使用索引扫描表
     IndexScan {
         table_name: String,
         index_name: String,
         condition: Option<Expression>,
     },
 
-    /// Project specific columns
+    /// 投影特定列
     Project {
         input: Box<ExecutionPlan>,
         columns: Vec<ProjectColumn>,
     },
 
-    /// Filter rows based on a condition
+    /// 基于条件过滤行
     Filter {
         input: Box<ExecutionPlan>,
         condition: Expression,
     },
 
-    /// Insert data into a table
+    /// 向表中插入数据
     Insert {
         table_name: String,
         schema: Schema,
@@ -48,7 +47,7 @@ pub enum ExecutionPlan {
         values: Vec<Vec<Expression>>,
     },
 
-    /// Update rows in a table
+    /// 更新表中的行
     Update {
         table_name: String,
         schema: Schema,
@@ -56,20 +55,20 @@ pub enum ExecutionPlan {
         filter: Option<Expression>,
     },
 
-    /// Delete rows from a table
+    /// 从表中删除行
     Delete {
         table_name: String,
         schema: Schema,
         filter: Option<Expression>,
     },
 
-    /// Create a new table
+    /// 创建新表
     CreateTable { table_name: String, schema: Schema },
 
-    /// Drop a table
+    /// 删除表
     DropTable { table_name: String, if_exists: bool },
 
-    /// Join two inputs
+    /// 连接两个输入
     Join {
         left: Box<ExecutionPlan>,
         right: Box<ExecutionPlan>,
@@ -77,27 +76,27 @@ pub enum ExecutionPlan {
         condition: Option<Expression>,
     },
 
-    /// Sort the input
+    /// 排序输入
     Sort {
         input: Box<ExecutionPlan>,
         sort_keys: Vec<SortKey>,
     },
 
-    /// Limit the number of output rows
+    /// 限制输出行数
     Limit {
         input: Box<ExecutionPlan>,
         count: u64,
         offset: Option<u64>,
     },
 
-    /// Group by and aggregate
+    /// 分组和聚合
     GroupBy {
         input: Box<ExecutionPlan>,
         group_expressions: Vec<Expression>,
         aggregate_functions: Vec<AggregateFunction>,
     },
 
-    /// Create an index
+    /// 创建索引
     CreateIndex {
         index_name: String,
         table_name: String,
@@ -105,20 +104,20 @@ pub enum ExecutionPlan {
         is_unique: bool,
     },
 
-    /// Drop an index
+    /// 删除索引
     DropIndex {
         index_name: String,
         table_name: String,
         if_exists: bool,
     },
 
-    /// Explain a query plan
+    /// 解释查询计划
     Explain {
         statement: Box<Statement>,
     },
 }
 
-/// Column projection specification
+/// 列投影规格
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectColumn {
     pub expression: Expression,
@@ -126,14 +125,14 @@ pub struct ProjectColumn {
     pub data_type: DataType,
 }
 
-/// Update assignment in UPDATE plan
+/// UPDATE 计划中的更新赋值
 #[derive(Debug, Clone, PartialEq)]
 pub struct UpdateAssignment {
     pub column: String,
     pub expression: Expression,
 }
 
-/// Join type
+/// 连接类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum JoinType {
     Inner,
@@ -142,41 +141,41 @@ pub enum JoinType {
     Full,
 }
 
-/// Sort key specification
+/// 排序键规格
 #[derive(Debug, Clone, PartialEq)]
 pub struct SortKey {
     pub expression: Expression,
     pub descending: bool,
 }
 
-/// Query planner
+/// 查询规划器
 pub struct QueryPlanner {
-    // Future: Could add cost-based optimization state here
+    // 未来：这里可以添加基于成本的优化状态
 }
 
-/// Planning errors
+/// 规划错误
 #[derive(Error, Debug)]
 pub enum PlanError {
-    #[error("Table schema not found: {table}")]
+    #[error("未找到表模式: {table}")]
     SchemaNotFound { table: String },
 
-    #[error("Column not found in projection: {column}")]
+    #[error("投影中未找到列: {column}")]
     ProjectionColumnNotFound { column: String },
 
-    #[error("Unsupported operation: {operation}")]
+    #[error("不支持的操作: {operation}")]
     UnsupportedOperation { operation: String },
 
-    #[error("Planning error: {message}")]
+    #[error("规划错误: {message}")]
     PlanningError { message: String },
 }
 
 impl QueryPlanner {
-    /// Create a new query planner
+    /// 创建新的查询规划器
     pub fn new() -> Self {
         Self {}
     }
 
-    /// Create an execution plan from an analyzed statement
+    /// 从已分析的语句创建执行计划
     pub fn create_plan(&self, analyzed: AnalyzedStatement) -> Result<ExecutionPlan, PlanError> {
         match analyzed.statement {
             Statement::CreateTable {
@@ -309,7 +308,7 @@ impl QueryPlanner {
         }
     }
 
-    /// Plan a complete SELECT statement with all clauses
+    /// 规划完整的 SELECT 语句及其所有子句
     fn plan_select_complete(
         &self,
         select_list: SelectList,
@@ -386,7 +385,7 @@ impl QueryPlanner {
         Ok(plan)
     }
 
-    /// Plan GROUP BY clause
+    /// 规划 GROUP BY 子句
     fn plan_group_by(
         &self,
         input: ExecutionPlan,
@@ -406,7 +405,7 @@ impl QueryPlanner {
         })
     }
 
-    /// Check if SELECT list contains aggregate functions
+    /// 检查 SELECT 列表是否包含聚合函数
     fn contains_aggregate_functions(&self, select_list: &SelectList) -> bool {
         match select_list {
             SelectList::Wildcard => false,
@@ -418,7 +417,7 @@ impl QueryPlanner {
         }
     }
 
-    /// Check if an expression contains aggregate functions (recursively)
+    /// 检查表达式是否包含聚合函数（递归检查）
     fn expression_contains_aggregate(&self, expr: &Expression) -> bool {
         match expr {
             Expression::FunctionCall { name, .. } => {
@@ -430,7 +429,7 @@ impl QueryPlanner {
         }
     }
 
-    /// Extract aggregate functions from SELECT list
+    /// 从 SELECT 列表中提取聚合函数
     fn extract_aggregate_functions(&self, select_list: &SelectList) -> Vec<AggregateFunction> {
         let mut functions = Vec::new();
         
@@ -471,7 +470,7 @@ impl QueryPlanner {
         functions
     }
 
-    /// Plan a SELECT statement (legacy method for compatibility)
+    /// 规划 SELECT 语句（为兼容性保留的旧方法）
     fn plan_select(
         &self,
         select_list: SelectList,
@@ -494,7 +493,7 @@ impl QueryPlanner {
         )
     }
 
-    /// Plan FROM clause
+    /// 规划 FROM 子句
     fn plan_from_clause(
         &self,
         from_clause: FromClause,
@@ -542,7 +541,7 @@ impl QueryPlanner {
         }
     }
 
-    /// Plan SELECT list (projection)
+    /// 规划 SELECT 列表（投影）
     fn plan_select_list(
         &self,
         input: ExecutionPlan,
@@ -583,7 +582,7 @@ impl QueryPlanner {
         }
     }
 
-    /// Build schema from column definitions
+    /// 从列定义构建模式
     fn build_schema_from_columns(
         &self,
         columns: &[crate::sql::parser::ColumnDef],
@@ -618,7 +617,7 @@ impl QueryPlanner {
         })
     }
 
-    /// Build wildcard projection (SELECT *)
+    /// 构建通配符投影（SELECT *）
     fn build_wildcard_projection(
         &self,
         table_schemas: &HashMap<String, Schema>,
@@ -641,7 +640,7 @@ impl QueryPlanner {
         Ok(columns)
     }
 
-    /// Infer the data type of an expression
+    /// 推断表达式的数据类型
     fn infer_expression_type(
         &self,
         expression: &Expression,

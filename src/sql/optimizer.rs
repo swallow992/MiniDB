@@ -1,50 +1,50 @@
-//! Query optimizer for MiniDB
+//! MiniDB 查询优化器
 //!
-//! This module implements various query optimization techniques:
-//! - Predicate pushdown
-//! - Projection pushdown  
-//! - Join reordering
-//! - Constant folding
+//! 此模块实现各种查询优化技术：
+//! - 谓词下推
+//! - 投影下推
+//! - 连接重排序
+//! - 常量折叠
 
 use crate::sql::parser::{Expression, BinaryOperator};
 use crate::sql::planner::{ExecutionPlan, PlanError, ProjectColumn};
 use crate::types::Value;
 use std::collections::HashSet;
 
-/// Query optimizer configuration
+/// 查询优化器配置
 pub struct QueryOptimizer {
-    /// Enable predicate pushdown optimization
+    /// 启用谓词下推优化
     enable_predicate_pushdown: bool,
-    /// Enable projection pushdown optimization
+    /// 启用投影下推优化
     enable_projection_pushdown: bool,
-    /// Enable constant folding optimization
+    /// 启用常量折叠优化
     enable_constant_folding: bool,
 }
 
-/// Optimization statistics
+/// 优化统计信息
 #[derive(Debug, Clone, Default)]
 pub struct OptimizationStats {
-    /// Number of predicates pushed down
+    /// 下推的谓词数量
     pub predicates_pushed: usize,
-    /// Number of projections pushed down
+    /// 下推的投影数量
     pub projections_pushed: usize,
-    /// Number of constants folded
+    /// 折叠的常量数量
     pub constants_folded: usize,
-    /// Number of joins reordered
+    /// 重排序的连接数量
     pub joins_reordered: usize,
 }
 
-/// Optimized execution plan with statistics
+/// 带统计信息的优化执行计划
 #[derive(Debug, Clone)]
 pub struct OptimizedPlan {
-    /// Optimized execution plan
+    /// 优化后的执行计划
     pub plan: ExecutionPlan,
-    /// Optimization statistics
+    /// 优化统计信息
     pub stats: OptimizationStats,
 }
 
 impl QueryOptimizer {
-    /// Create a new query optimizer with default settings
+    /// 使用默认设置创建新的查询优化器
     pub fn new() -> Self {
         Self {
             enable_predicate_pushdown: true,
@@ -53,7 +53,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Create a new query optimizer with custom settings
+    /// 使用自定义设置创建新的查询优化器
     pub fn with_settings(
         predicate_pushdown: bool,
         projection_pushdown: bool,
@@ -66,7 +66,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Optimize an execution plan
+    /// 优化执行计划
     pub fn optimize(&self, plan: ExecutionPlan) -> Result<OptimizedPlan, PlanError> {
         let mut optimized_plan = plan;
         let mut stats = OptimizationStats::default();
@@ -90,7 +90,7 @@ impl QueryOptimizer {
         })
     }
 
-    /// Apply constant folding optimization
+    /// 应用常量折叠优化
     fn apply_constant_folding(
         &self,
         plan: ExecutionPlan,
@@ -127,7 +127,7 @@ impl QueryOptimizer {
         Ok(plan)
     }
 
-    /// Apply predicate pushdown optimization
+    /// 应用谓词下推优化
     fn apply_predicate_pushdown(
         &self,
         plan: ExecutionPlan,
@@ -222,7 +222,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Apply projection pushdown optimization
+    /// 应用投影下推优化
     fn apply_projection_pushdown(
         &self,
         plan: ExecutionPlan,
@@ -247,7 +247,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Fold constants in an expression
+    /// 在表达式中折叠常量
     fn fold_constants_in_expression(&self, expr: Expression) -> Result<Expression, PlanError> {
         match expr {
             Expression::BinaryOp { left, op, right } => {
@@ -299,7 +299,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Evaluate a binary operation on constant values
+    /// 对常量值执行二元运算
     fn evaluate_binary_op(
         &self,
         left: &Value,
@@ -318,7 +318,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Evaluate a unary operation on a constant value
+    /// 对常量值执行一元运算
     fn evaluate_unary_op(
         &self,
         operator: &crate::sql::parser::UnaryOperator,
@@ -332,7 +332,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Check if two expressions are equal
+    /// 检查两个表达式是否相等
     fn expressions_equal(&self, expr1: &Expression, expr2: &Expression) -> bool {
         match (expr1, expr2) {
             (Expression::Literal(v1), Expression::Literal(v2)) => v1 == v2,
@@ -349,7 +349,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Get required columns from projection columns
+    /// 从投影列中获取所需列
     fn get_required_columns_from_projections(&self, columns: &[ProjectColumn]) -> HashSet<String> {
         let mut required = HashSet::new();
         for col in columns {
@@ -359,7 +359,7 @@ impl QueryOptimizer {
         required
     }
 
-    /// Get column references in an expression
+    /// 获取表达式中的列引用
     fn get_column_references(&self, expr: &Expression) -> HashSet<String> {
         let mut columns = HashSet::new();
         match expr {
@@ -388,7 +388,7 @@ impl QueryOptimizer {
 
 
 
-    /// Get tables referenced by an execution plan
+    /// 获取执行计划引用的表
     fn get_plan_tables(&self, plan: &ExecutionPlan) -> HashSet<String> {
         match plan {
             ExecutionPlan::TableScan { table_name, .. } => {
@@ -409,20 +409,20 @@ impl QueryOptimizer {
         }
     }
 
-    /// Get tables referenced in an expression
+    /// 获取表达式中引用的表
     fn get_referenced_tables(&self, _expr: &Expression) -> HashSet<String> {
         // Simplified implementation - would need table resolution context
         HashSet::new()
     }
 
-    /// Analyze which predicates can be pushed down
+    /// 分析哪些谓词可以下推
     fn analyze_pushable_predicates(&self, condition: &Expression) -> Result<Vec<Expression>, PlanError> {
         // For now, treat the entire condition as one predicate
         // In a full implementation, this would split AND conditions
         Ok(vec![condition.clone()])
     }
 
-    /// Combine multiple predicates with AND
+    /// 使用 AND 组合多个谓词
     fn combine_predicates(&self, predicates: Vec<Expression>) -> Result<Expression, PlanError> {
         if predicates.is_empty() {
             return Err(PlanError::UnsupportedOperation { operation: "Cannot combine empty predicate list".to_string() });
@@ -440,7 +440,7 @@ impl QueryOptimizer {
         Ok(result)
     }
 
-    /// Apply predicate pushdown recursively to child plans
+    /// 递归地向子计划应用谓词下推
     fn apply_predicate_pushdown_recursive(
         &self,
         plan: ExecutionPlan,
@@ -469,7 +469,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Apply projection pushdown recursively to child plans
+    /// 递归地向子计划应用投影下推
     fn apply_projection_pushdown_recursive(
         &self,
         plan: ExecutionPlan,
@@ -487,7 +487,7 @@ impl QueryOptimizer {
         }
     }
 
-    /// Push projection requirements into a plan
+    /// 将投影需求推入计划
     fn push_projection_into_plan(
         &self,
         plan: ExecutionPlan,

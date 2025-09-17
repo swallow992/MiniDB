@@ -1,6 +1,6 @@
-//! Database engine implementation
+//! 数据库引擎实现
 //!
-//! Main database interface and query execution coordination.
+//! 主数据库接口和查询执行协调。
 
 use crate::sql::{parse_sql, Statement};
 use crate::sql::parser::OrderByExpr;
@@ -29,29 +29,29 @@ struct DatabaseMetadata {
     table_catalog: HashMap<String, u32>,
 }
 
-/// Main database instance
+/// 主数据库实例
 pub struct Database {
-    /// Path to database directory
+    /// 数据库目录路径
     data_dir: PathBuf,
-    /// File manager for database files
+    /// 数据库文件管理器
     file_manager: FileManager,
-    /// Buffer pool for page caching
+    /// 页面缓存的缓冲池
     buffer_pool: BufferPool,
-    /// Table catalog: table_name -> table_id
+    /// 表目录：表名 -> 表ID
     table_catalog: HashMap<String, u32>,
-    /// Table schemas: table_id -> schema
+    /// 表模式：表ID -> 模式
     table_schemas: HashMap<u32, Schema>,
-    /// Table data: table_id -> rows (simplified in-memory storage)
+    /// 表数据：表ID -> 行（简化的内存存储）
     table_data: HashMap<u32, Vec<Tuple>>,
-    /// Next available table ID
+    /// 下一个可用的表ID
     next_table_id: u32,
-    /// Error diagnostics engine
+    /// 错误诊断引擎
     diagnostic_engine: DiagnosticEngine,
-    /// Query optimizer
+    /// 查询优化器
     optimizer: QueryOptimizer,
 }
 
-/// Query execution result
+/// 查询执行结果
 #[derive(Debug, Clone)]
 pub struct QueryResult {
     pub rows: Vec<Tuple>,
@@ -60,22 +60,22 @@ pub struct QueryResult {
     pub message: String,
 }
 
-/// Database execution errors
+/// 数据库执行错误
 #[derive(Error, Debug)]
 pub enum ExecutionError {
-    #[error("SQL parsing error: {0}")]
+    #[error("SQL 解析错误: {0}")]
     ParseError(String),
     
-    #[error("Storage error: {0}")]
+    #[error("存储错误: {0}")]
     StorageError(String),
     
-    #[error("Table '{table}' not found")]
+    #[error("未找到表 '{table}'")]
     TableNotFound { table: String },
     
-    #[error("Table '{table}' already exists")]
+    #[error("表 '{table}' 已存在")]
     TableAlreadyExists { table: String },
     
-    #[error("Column '{column}' not found in table '{table}'")]
+    #[error("表 '{table}' 中未找到列 '{column}'")]
     ColumnNotFound { table: String, column: String },
     
     #[error("Type mismatch: expected {expected}, got {actual}")]
@@ -92,7 +92,7 @@ pub enum ExecutionError {
 }
 
 impl Database {
-    /// Create a new database instance
+    /// 创建一个新的数据库实例
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, ExecutionError> {
         let data_dir = path.as_ref().to_path_buf();
         
@@ -129,7 +129,7 @@ impl Database {
         Ok(database)
     }
 
-    /// Execute a SQL statement
+    /// 执行 SQL 语句
     pub fn execute(&mut self, sql: &str) -> Result<QueryResult, ExecutionError> {
         // Step 1: Parse SQL with enhanced error diagnostics
         let statement = parse_sql(sql)
@@ -178,7 +178,7 @@ impl Database {
         }
     }
     
-    /// Execute CREATE TABLE statement (simplified)
+    /// 执行 CREATE TABLE 语句（简化版本）
     fn execute_create_table_simple(&mut self, name: String, columns: Vec<crate::sql::parser::ColumnDef>) -> Result<QueryResult, ExecutionError> {
         // Check if table already exists
         if self.table_catalog.contains_key(&name) {
@@ -245,7 +245,7 @@ impl Database {
         })
     }
     
-    /// Execute DROP TABLE statement (simplified)
+    /// 执行 DROP TABLE 语句（简化版本）
     fn execute_drop_table_simple(&mut self, name: String) -> Result<QueryResult, ExecutionError> {
         // Check if table exists
         let table_id = self.table_catalog.get(&name)
@@ -270,7 +270,7 @@ impl Database {
         })
     }
     
-    /// Execute INSERT statement (simplified)
+    /// 执行 INSERT 语句（简化版本）
     fn execute_insert_simple(&mut self, table: String, values: Vec<Vec<crate::sql::parser::Expression>>) -> Result<QueryResult, ExecutionError> {
         // Check if table exists
         let table_id = self.table_catalog.get(&table)
@@ -323,7 +323,7 @@ impl Database {
         })
     }
     
-    /// Simple expression evaluation (for literals only)
+    /// 简单表达式求值（仅支持字面量）
     fn evaluate_expression(&self, expr: &crate::sql::parser::Expression, expected_type: &DataType) -> Result<Value, ExecutionError> {
         use crate::sql::parser::Expression;
         
@@ -366,7 +366,7 @@ impl Database {
         }
     }
     
-    /// Evaluate WHERE condition for a given row
+    /// 评估给定行的 WHERE 条件
     fn evaluate_where_condition(
         &self, 
         expr: &crate::sql::parser::Expression, 
@@ -427,7 +427,7 @@ impl Database {
         }
     }
     
-    /// Evaluate expression in WHERE context (returns Value)
+    /// 在 WHERE 上下文中求值表达式（返回 Value）
     fn evaluate_where_expression(
         &self, 
         expr: &crate::sql::parser::Expression, 
@@ -455,7 +455,7 @@ impl Database {
         }
     }
     
-    /// Compare two values for ordering (returns ordering comparison result)
+    /// 比较两个值的顺序（返回排序比较结果）
     fn compare_values<F>(&self, left: &Value, right: &Value, pred: F) -> Result<bool, ExecutionError>
     where 
         F: Fn(i32) -> bool
@@ -494,7 +494,7 @@ impl Database {
         Ok(pred(cmp_int))
     }
     
-    /// Simplified WHERE evaluation to avoid borrowing conflicts
+    /// 简化的 WHERE 求值以避免借用冲突
     fn simple_where_eval(
         &self,
         expr: &crate::sql::parser::Expression,
@@ -526,7 +526,7 @@ impl Database {
         }
     }
     
-    /// Simplified expression evaluation for WHERE conditions
+    /// 简化的 WHERE 条件表达式求值
     fn simple_where_expr_eval(
         &self,
         expr: &crate::sql::parser::Expression,
@@ -553,7 +553,7 @@ impl Database {
         }
     }
     
-    /// Project specific columns from rows (SELECT column filtering)
+    /// 投影特定列（SELECT 列过滤）
     fn project_columns(
         &self,
         rows: &[Tuple],
@@ -658,7 +658,7 @@ impl Database {
         Ok((projected_rows, new_schema))
     }
     
-    /// Execute SELECT statement (simplified)
+    /// 执行 SELECT 语句（简化版本）
     fn execute_select_simple(
         &self,
         select_list: crate::sql::parser::SelectList,
@@ -726,7 +726,7 @@ impl Database {
         })
     }
 
-    /// Execute SELECT statement with full feature support (ORDER BY, GROUP BY, LIMIT, etc.)
+    /// 执行具有完整功能支持的 SELECT 语句（ORDER BY、GROUP BY、LIMIT 等）
     fn execute_select_complete(
         &self,
         select_list: crate::sql::parser::SelectList,
@@ -1064,7 +1064,7 @@ impl Database {
         }
     }
 
-    /// Check if SELECT list contains aggregate functions
+    /// 检查 SELECT 列表是否包含聚合函数
     fn select_list_contains_aggregates(&self, select_list: &crate::sql::parser::SelectList) -> bool {
         use crate::sql::parser::{SelectList, Expression};
         
@@ -1078,7 +1078,7 @@ impl Database {
         }
     }
 
-    /// Check if an expression contains aggregate functions (recursively)
+    /// 检查表达式是否包含聚合函数（递归检查）
     fn expression_contains_aggregates(&self, expr: &crate::sql::parser::Expression) -> bool {
         use crate::sql::parser::Expression;
         

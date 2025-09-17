@@ -1,7 +1,7 @@
-//! Query execution engine
+//! 查询执行引擎
 //!
-//! This module provides the core database functionality including
-//! query execution, table management, and transaction processing.
+//! 此模块提供核心数据库功能，包括
+//! 查询执行、表管理和事务处理。
 
 pub mod database;
 pub mod executor;

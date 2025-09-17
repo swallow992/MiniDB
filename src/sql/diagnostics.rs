@@ -1,10 +1,10 @@
-//! Smart error diagnostics for MiniDB
+//! MiniDB 智能错误诊断
 //!
-//! This module provides enhanced error reporting with intelligent suggestions:
-//! - Keyword spelling suggestions  
-//! - Table/column name recommendations
-//! - Syntax error hints
-//! - Context-aware error messages
+//! 此模块提供增强的错误报告和智能建议：
+//! - 关键字拼写建议
+//! - 表名/列名推荐
+//! - 语法错误提示
+//! - 上下文感知错误消息
 
 use std::collections::HashMap;
 

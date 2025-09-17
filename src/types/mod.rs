@@ -1,58 +1,58 @@
-//! Data types and value system
+//! 数据类型和值系统
 //!
-//! This module defines the type system used throughout MiniDB,
-//! including data types, values, and schema definitions.
+//! 此模块定义了整个 MiniDB 中使用的类型系统，
+//! 包括数据类型、值和模式定义。
 
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
 
-/// SQL data types supported by MiniDB
+/// MiniDB 支持的 SQL 数据类型
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataType {
-    /// 32-bit signed integer
+    /// 32位有符号整数
     Integer,
-    /// 64-bit signed integer
+    /// 64位有符号整数
     BigInt,
-    /// 32-bit floating point
+    /// 32位浮点数
     Float,
-    /// 64-bit floating point
+    /// 64位浮点数
     Double,
-    /// Variable-length string with maximum length
+    /// 可变长度字符串，带最大长度限制
     Varchar(usize),
-    /// Boolean true/false
+    /// 布尔值 true/false
     Boolean,
-    /// Date without time
+    /// 日期（不含时间）
     Date,
-    /// Date and time
+    /// 日期和时间
     Timestamp,
 }
 
-/// Runtime values that can be stored in the database
+/// 可以存储在数据库中的运行时值
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
-    /// NULL value
+    /// NULL 值
     Null,
-    /// Integer value
+    /// 整数值
     Integer(i32),
-    /// Big integer value
+    /// 大整数值
     BigInt(i64),
-    /// Float value
+    /// 浮点数值
     Float(f32),
-    /// Double precision value
+    /// 双精度浮点数值
     Double(f64),
-    /// String value
+    /// 字符串值
     Varchar(String),
-    /// Boolean value
+    /// 布尔值
     Boolean(bool),
-    /// Date value
+    /// 日期值
     Date(NaiveDate),
-    /// Timestamp value
+    /// 时间戳值
     Timestamp(NaiveDateTime),
 }
 
-// Custom implementations for Value to handle float comparison
+// 为 Value 自定义实现，用于处理浮点数比较
 impl Eq for Value {}
 
 impl std::hash::Hash for Value {
@@ -89,7 +89,7 @@ impl PartialOrd for Value {
             (Value::Date(a), Value::Date(b)) => a.partial_cmp(b),
             (Value::Timestamp(a), Value::Timestamp(b)) => a.partial_cmp(b),
             
-            // Type promotion for numeric types
+            // 数值类型的类型提升
             (Value::Integer(a), Value::BigInt(b)) => (*a as i64).partial_cmp(b),
             (Value::BigInt(a), Value::Integer(b)) => a.partial_cmp(&(*b as i64)),
             (Value::Integer(a), Value::Float(b)) => (*a as f32).partial_cmp(b),
@@ -99,19 +99,19 @@ impl PartialOrd for Value {
             (Value::Float(a), Value::Double(b)) => (*a as f64).partial_cmp(b),
             (Value::Double(a), Value::Float(b)) => a.partial_cmp(&(*b as f64)),
             
-            // Different types are not comparable
+            // 不同类型不可比较
             _ => None,
         }
     }
 }
 
-/// Database tuple (row) containing multiple values
+/// 数据库元组（行），包含多个值
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tuple {
     pub values: Vec<Value>,
 }
 
-/// Column definition in a table schema
+/// 表模式中的列定义
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnDefinition {
     pub name: String,
@@ -120,31 +120,31 @@ pub struct ColumnDefinition {
     pub default: Option<Value>,
 }
 
-/// Table schema containing column definitions
+/// 包含列定义的表模式
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Schema {
     pub columns: Vec<ColumnDefinition>,
-    pub primary_key: Option<Vec<usize>>, // Column indices that form the primary key
+    pub primary_key: Option<Vec<usize>>, // 构成主键的列索引
 }
 
-/// Errors related to type operations
+/// 与类型操作相关的错误
 #[derive(Error, Debug)]
 pub enum TypeError {
-    #[error("Type mismatch: expected {expected:?}, found {found:?}")]
+    #[error("类型不匹配：期望 {expected:?}，实际 {found:?}")]
     Mismatch { expected: DataType, found: DataType },
 
-    #[error("Invalid cast from {from:?} to {to:?}")]
+    #[error("无效的类型转换：从 {from:?} 到 {to:?}")]
     InvalidCast { from: DataType, to: DataType },
 
-    #[error("Null value in non-nullable column")]
+    #[error("非空列中存在 NULL 值")]
     NullConstraintViolation,
 
-    #[error("String too long: max length {max}, got {actual}")]
+    #[error("字符串过长：最大长度 {max}，实际长度 {actual}")]
     StringTooLong { max: usize, actual: usize },
 }
 
 impl DataType {
-    /// Get the size in bytes for fixed-size types
+    /// 获取固定大小类型的字节大小
     pub fn size(&self) -> Option<usize> {
         match self {
             DataType::Integer => Some(4),
@@ -152,13 +152,13 @@ impl DataType {
             DataType::Float => Some(4),
             DataType::Double => Some(8),
             DataType::Boolean => Some(1),
-            DataType::Date => Some(4),      // Days since epoch
-            DataType::Timestamp => Some(8), // Microseconds since epoch
-            DataType::Varchar(_) => None,   // Variable size
+            DataType::Date => Some(4),      // 自纪元以来的天数
+            DataType::Timestamp => Some(8), // 自纪元以来的微秒数
+            DataType::Varchar(_) => None,   // 可变大小
         }
     }
 
-    /// Check if this type is compatible with another type
+    /// 检查此类型是否与另一个类型兼容
     pub fn is_compatible_with(&self, other: &DataType) -> bool {
         match (self, other) {
             (a, b) if a == b => true,
@@ -168,7 +168,7 @@ impl DataType {
             (DataType::Double, DataType::Float) => true,
             (DataType::Integer, DataType::Float) => true,
             (DataType::Integer, DataType::Double) => true,
-            // Varchar compatibility: smaller strings can fit into larger varchar columns
+            // Varchar 兼容性：较小的字符串可以适配较大的 varchar 列
             (DataType::Varchar(len1), DataType::Varchar(len2)) => len1 <= len2,
             _ => false,
         }
@@ -176,10 +176,10 @@ impl DataType {
 }
 
 impl Value {
-    /// Get the data type of this value
+    /// 获取此值的数据类型
     pub fn data_type(&self) -> DataType {
         match self {
-            Value::Null => DataType::Varchar(0), // Null can be any type
+            Value::Null => DataType::Varchar(0), // Null 可以是任何类型
             Value::Integer(_) => DataType::Integer,
             Value::BigInt(_) => DataType::BigInt,
             Value::Float(_) => DataType::Float,
@@ -191,27 +191,27 @@ impl Value {
         }
     }
 
-    /// Check if this value is compatible with a data type
+    /// 检查此值是否与数据类型兼容
     pub fn is_compatible_with(&self, data_type: &DataType) -> bool {
         match self {
-            Value::Null => true, // Null is compatible with any type
+            Value::Null => true, // Null 与任何类型兼容
             _ => self.data_type().is_compatible_with(data_type),
         }
     }
 
-    /// Attempt to cast this value to another type
+    /// 尝试将此值转换为另一种类型
     pub fn cast_to(&self, target_type: &DataType) -> Result<Value, TypeError> {
         match (self, target_type) {
             (Value::Null, _) => Ok(Value::Null),
             (value, target) if value.data_type() == *target => Ok(value.clone()),
 
-            // Integer conversions
+            // 整数转换
             (Value::Integer(i), DataType::BigInt) => Ok(Value::BigInt(*i as i64)),
             (Value::Integer(i), DataType::Float) => Ok(Value::Float(*i as f32)),
             (Value::Integer(i), DataType::Double) => Ok(Value::Double(*i as f64)),
             (Value::Integer(i), DataType::Varchar(_)) => Ok(Value::Varchar(i.to_string())),
 
-            // String conversions
+            // 字符串转换
             (Value::Varchar(s), DataType::Integer) => {
                 s.parse::<i32>()
                     .map(Value::Integer)
@@ -228,15 +228,15 @@ impl Value {
         }
     }
 
-    /// Get the serialized size of this value in bytes
+    /// 获取此值的序列化字节大小
     pub fn serialized_size(&self) -> usize {
         match self {
-            Value::Null => 1, // Null marker
+            Value::Null => 1, // Null 标记
             Value::Integer(_) => 4,
             Value::BigInt(_) => 8,
             Value::Float(_) => 4,
             Value::Double(_) => 8,
-            Value::Varchar(s) => 4 + s.len(), // Length prefix + string data
+            Value::Varchar(s) => 4 + s.len(), // 长度前缀 + 字符串数据
             Value::Boolean(_) => 1,
             Value::Date(_) => 4,
             Value::Timestamp(_) => 8,
@@ -245,22 +245,22 @@ impl Value {
 }
 
 impl Tuple {
-    /// Create a new tuple with the given values
+    /// 使用给定值创建新元组
     pub fn new(values: Vec<Value>) -> Self {
         Self { values }
     }
 
-    /// Get a value by column index
+    /// 根据列索引获取值
     pub fn get_value(&self, index: usize) -> Option<&Value> {
         self.values.get(index)
     }
 
-    /// Get the total serialized size of this tuple
+    /// 获取此元组的总序列化大小
     pub fn size(&self) -> usize {
         self.values.iter().map(|v| v.serialized_size()).sum()
     }
 
-    /// Check if this tuple conforms to the given schema
+    /// 检查此元组是否符合给定模式
     pub fn conforms_to_schema(&self, schema: &Schema) -> Result<(), TypeError> {
         if self.values.len() != schema.columns.len() {
             return Err(TypeError::Mismatch {
@@ -274,7 +274,7 @@ impl Tuple {
                 Value::Null if !column.nullable => {
                     return Err(TypeError::NullConstraintViolation);
                 }
-                Value::Null => continue, // Null is allowed
+                Value::Null => continue, // 允许 Null 值
                 _ => {
                     if !value.is_compatible_with(&column.data_type) {
                         return Err(TypeError::Mismatch {
@@ -291,7 +291,7 @@ impl Tuple {
 }
 
 impl Schema {
-    /// Create a new schema with the given column definitions
+    /// 使用给定的列定义创建新模式
     pub fn new(columns: Vec<ColumnDefinition>) -> Self {
         Self { 
             columns,
@@ -299,7 +299,7 @@ impl Schema {
         }
     }
     
-    /// Create a new schema with primary key
+    /// 创建带有主键的新模式
     pub fn new_with_primary_key(columns: Vec<ColumnDefinition>, primary_key: Vec<usize>) -> Self {
         Self {
             columns,
@@ -307,7 +307,7 @@ impl Schema {
         }
     }
 
-    /// Find a column by name
+    /// 根据名称查找列
     pub fn find_column(&self, name: &str) -> Option<(usize, &ColumnDefinition)> {
         self.columns
             .iter()
@@ -315,14 +315,14 @@ impl Schema {
             .find(|(_, col)| col.name == name)
     }
 
-    /// Get the total number of columns
+    /// 获取列的总数
     pub fn column_count(&self) -> usize {
         self.columns.len()
     }
 }
 
 impl ColumnDefinition {
-    /// Create a new column definition
+    /// 创建新的列定义
     pub fn new(name: String, data_type: DataType, nullable: bool) -> Self {
         Self {
             name,
@@ -332,7 +332,7 @@ impl ColumnDefinition {
         }
     }
 
-    /// Set a default value for this column
+    /// 为此列设置默认值
     pub fn with_default(mut self, default: Value) -> Self {
         self.default = Some(default);
         self

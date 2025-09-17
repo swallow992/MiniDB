@@ -1,24 +1,24 @@
-//! SQL lexical analyzer
+//! SQL 词法分析器
 //!
-//! Tokenizes SQL input into a stream of tokens for parsing.
+//! 将 SQL 输入标记化为用于解析的标记流。
 
 use std::collections::HashMap;
 use thiserror::Error;
 
-/// SQL token types
+/// SQL 标记类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    // Literals
+    // 字面量
     Integer(i64),
     Float(f64),
     String(String),
     Boolean(bool),
     Null,
 
-    // Identifiers and keywords
+    // 标识符和关键字
     Identifier(String),
 
-    // Keywords (SQL reserved words)
+    // 关键字（SQL 保留字）
     Select,
     From,
     Where,
@@ -73,7 +73,7 @@ pub enum Token {
     Explain,
     Unique,
 
-    // Data types
+    // 数据类型
     Int,
     BigInt,
     Float32,
@@ -85,20 +85,20 @@ pub enum Token {
     Date,
     Timestamp,
 
-    // Operators
+    // 运算符
     Plus,         // +
     Minus,        // -
     Multiply,     // *
     Divide,       // /
     Modulo,       // %
     Equal,        // =
-    NotEqual,     // <> or !=
+    NotEqual,     // <> 或 !=
     LessThan,     // <
     LessEqual,    // <=
     GreaterThan,  // >
     GreaterEqual, // >=
 
-    // Punctuation
+    // 标点符号
     LeftParen,    // (
     RightParen,   // )
     LeftBracket,  // [
@@ -107,27 +107,27 @@ pub enum Token {
     Semicolon,    // ;
     Dot,          // .
 
-    // Special
+    // 特殊符号
     Wildcard, // *
     EOF,
 }
 
-/// Token information with position details
+/// 带位置详细信息的标记信息
 #[derive(Debug, Clone, PartialEq)]
 pub struct TokenInfo {
-    /// Token type and value
+    /// 标记类型和值
     pub token: Token,
-    /// Token category code
+    /// 标记类别代码
     pub category: TokenCategory,
-    /// Token lexeme (original text)
+    /// 标记词素（原始文本）
     pub lexeme: String,
-    /// Line number (1-based)
+    /// 行号（从1开始）
     pub line: u32,
-    /// Column number (1-based)  
+    /// 列号（从1开始）  
     pub column: u32,
 }
 
-/// Token category codes for output format
+/// 输出格式的标记类别代码
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenCategory {
     Keyword = 1,
@@ -141,7 +141,7 @@ pub enum TokenCategory {
     EOF = 9,
 }
 
-/// SQL lexer
+/// SQL 词法分析器
 pub struct Lexer {
     input: Vec<char>,
     position: usize,
@@ -151,21 +151,21 @@ pub struct Lexer {
     column: u32,
 }
 
-/// Lexer errors
+/// 词法分析器错误
 #[derive(Error, Debug)]
 pub enum LexError {
-    #[error("Unexpected character: '{0}' at position {1}")]
+    #[error("意外字符：'{0}' 位置 {1}")]
     UnexpectedCharacter(char, usize),
 
-    #[error("Unterminated string at position {0}")]
+    #[error("未终止的字符串，位置 {0}")]
     UnterminatedString(usize),
 
-    #[error("Invalid number format at position {0}")]
+    #[error("无效的数字格式，位置 {0}")]
     InvalidNumber(usize),
 }
 
 impl Lexer {
-    /// Create a new lexer
+    /// 创建新的词法分析器
     pub fn new(input: &str) -> Self {
         let input: Vec<char> = input.chars().collect();
         let current_char = input.get(0).copied();
@@ -183,7 +183,7 @@ impl Lexer {
         lexer
     }
 
-    /// Initialize keyword mapping
+    /// 初始化关键字映射
     fn init_keywords(&mut self) {
         let keywords = [
             ("SELECT", Token::Select),
@@ -261,7 +261,7 @@ impl Lexer {
         }
     }
 
-    /// Advance to the next character
+    /// 前进到下一个字符
     fn advance(&mut self) {
         if let Some('\n') = self.current_char {
             self.line += 1;
@@ -274,12 +274,12 @@ impl Lexer {
         self.current_char = self.input.get(self.position).copied();
     }
 
-    /// Peek at the next character without advancing
+    /// 查看下一个字符而不前进
     fn peek(&self) -> Option<char> {
         self.input.get(self.position + 1).copied()
     }
 
-    /// Skip whitespace characters and BOM
+    /// 跳过空白字符和 BOM
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.current_char {
             if ch.is_whitespace() || ch == '\u{feff}' {
@@ -290,7 +290,7 @@ impl Lexer {
         }
     }
 
-    /// Skip line comments starting with --
+    /// 跳过以 -- 开头的行注释
     fn skip_line_comment(&mut self) {
         while let Some(ch) = self.current_char {
             if ch == '\n' {
@@ -301,15 +301,15 @@ impl Lexer {
         }
     }
 
-    /// Skip block comments /* ... */
+    /// 跳过块注释 /* ... */
     fn skip_block_comment(&mut self) -> Result<(), LexError> {
-        self.advance(); // skip '/'
-        self.advance(); // skip '*'
+        self.advance(); // 跳过 '/'
+        self.advance(); // 跳过 '*'
 
         while let Some(ch) = self.current_char {
             if ch == '*' && self.peek() == Some('/') {
-                self.advance(); // skip '*'
-                self.advance(); // skip '/'
+                self.advance(); // 跳过 '*'
+                self.advance(); // 跳过 '/'
                 return Ok(());
             }
             self.advance();
@@ -318,13 +318,13 @@ impl Lexer {
         Err(LexError::UnterminatedString(self.position))
     }
 
-    /// Read a number (integer or float)
+    /// 读取数字（整数或浮点数）
     fn read_number(&mut self) -> Result<Token, LexError> {
         let start_pos = self.position;
         let mut number_str = String::new();
         let mut is_float = false;
 
-        // Read digits and optional decimal point
+        // 读取数字和可选的小数点
         while let Some(ch) = self.current_char {
             if ch.is_ascii_digit() {
                 number_str.push(ch);
@@ -351,28 +351,28 @@ impl Lexer {
         }
     }
 
-    /// Read a string literal
+    /// 读取字符串字面量
     fn read_string(&mut self) -> Result<Token, LexError> {
         let start_pos = self.position;
-        self.advance(); // skip opening quote
+        self.advance(); // 跳过开头引号
 
         let mut string_value = String::new();
 
         while let Some(ch) = self.current_char {
             if ch == '\'' {
-                // Check if it's an escaped single quote (SQL standard: '' represents ')
+                // 检查是否是转义的单引号（SQL标准：'' 表示 '）
                 if self.peek() == Some('\'') {
-                    // This is an escaped single quote, add one ' to the string
+                    // 这是转义的单引号，向字符串添加一个 '
                     string_value.push('\'');
-                    self.advance(); // skip first '
-                    self.advance(); // skip second '
+                    self.advance(); // 跳过第一个 '
+                    self.advance(); // 跳过第二个 '
                 } else {
-                    // This is the closing quote
-                    self.advance(); // skip closing quote
+                    // 这是结束引号
+                    self.advance(); // 跳过结束引号
                     return Ok(Token::String(string_value));
                 }
             } else if ch == '\\' {
-                // Handle backslash escape sequences (non-standard but commonly supported)
+                // 处理反斜杠转义序列（非标准但常用）
                 self.advance();
                 match self.current_char {
                     Some('n') => string_value.push('\n'),
@@ -396,7 +396,7 @@ impl Lexer {
         Err(LexError::UnterminatedString(start_pos))
     }
 
-    /// Read an identifier or keyword
+    /// 读取标识符或关键字
     fn read_identifier(&mut self) -> Token {
         let mut identifier = String::new();
 
@@ -409,7 +409,7 @@ impl Lexer {
             }
         }
 
-        // Check if it's a keyword
+        // 检查是否为关键字
         let upper_identifier = identifier.to_uppercase();
         self.keywords
             .get(&upper_identifier)
@@ -417,7 +417,7 @@ impl Lexer {
             .unwrap_or_else(|| Token::Identifier(identifier))
     }
 
-    /// Get the next token
+    /// 获取下一个标记
     pub fn next_token(&mut self) -> Result<Token, LexError> {
         loop {
             self.skip_whitespace();
@@ -426,7 +426,7 @@ impl Lexer {
                 None => return Ok(Token::EOF),
 
                 Some(ch) => match ch {
-                    // Comments
+                    // 注释
                     '-' if self.peek() == Some('-') => {
                         self.skip_line_comment();
                         continue;
@@ -436,16 +436,16 @@ impl Lexer {
                         continue;
                     }
 
-                    // Numbers
+                    // 数字
                     '0'..='9' => return self.read_number(),
 
-                    // String literals
+                    // 字符串字面量
                     '\'' => return self.read_string(),
 
-                    // Identifiers and keywords
+                    // 标识符和关键字
                     'a'..='z' | 'A'..='Z' | '_' => return Ok(self.read_identifier()),
 
-                    // Operators and punctuation
+                    // 运算符和标点符号
                     '+' => {
                         self.advance();
                         return Ok(Token::Plus);
@@ -531,7 +531,7 @@ impl Lexer {
         }
     }
 
-    /// Get all tokens (useful for debugging)
+    /// 获取所有标记（用于调试）
     pub fn tokenize(&mut self) -> Result<Vec<Token>, LexError> {
         let mut tokens = Vec::new();
 
@@ -547,9 +547,9 @@ impl Lexer {
         Ok(tokens)
     }
 
-    /// Get the next token with position information
+    /// 获取带位置信息的下一个标记
     pub fn next_token_info(&mut self) -> Result<TokenInfo, LexError> {
-        // Skip whitespace and comments first
+        // 首先跳过空白字符和注释
         loop {
             self.skip_whitespace();
 
@@ -579,7 +579,7 @@ impl Lexer {
             }
         }
 
-        // Record position at start of actual token
+        // 记录实际标记开始位置
         let start_line = self.line;
         let start_column = self.column;
         let start_pos = self.position;
@@ -587,7 +587,7 @@ impl Lexer {
         let token = self.next_token()?;
         let end_pos = self.position;
 
-        // Get lexeme from original input
+        // 从原始输入获取词素
         let lexeme = if start_pos < self.input.len() {
             self.input[start_pos..end_pos.min(self.input.len())]
                 .iter()
@@ -607,7 +607,7 @@ impl Lexer {
         })
     }
 
-    /// Get token category for output format
+    /// 获取输出格式的标记类别
     fn get_token_category(&self, token: &Token) -> TokenCategory {
         match token {
             Token::Select
@@ -707,7 +707,7 @@ impl Lexer {
 }
 
 impl TokenInfo {
-    /// Format token info as [种别码，词素值，行号，列号]
+    /// 格式化标记信息为 [种别码，词素值，行号，列号]
     pub fn format_output(&self) -> String {
         format!(
             "[{}, {}, {}, {}]",

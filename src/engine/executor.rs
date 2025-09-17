@@ -1,4 +1,4 @@
-//! Query executor
+//! 查询执行器
 
 use crate::sql::parser::Expression;
 use crate::sql::planner::{JoinType, SortKey};
@@ -33,7 +33,7 @@ pub enum ExecutorError {
     JoinError { message: String },
 }
 
-/// Hash Join executor - builds hash table from left input, probes with right input
+/// 哈希连接执行器 - 从左输入构建哈希表，使用右输入进行探测
 pub struct HashJoinExecutor {
     left: Box<dyn Executor>,
     right: Box<dyn Executor>,
@@ -208,7 +208,7 @@ impl Executor for HashJoinExecutor {
     }
 }
 
-/// Sort executor
+/// 排序执行器
 pub struct SortExecutor {
     input: Box<dyn Executor>,
     sort_keys: Vec<SortKey>,
@@ -336,7 +336,7 @@ impl Executor for SortExecutor {
     }
 }
 
-/// Limit executor
+/// 限制执行器
 pub struct LimitExecutor {
     input: Box<dyn Executor>,
     limit: u64,
@@ -397,7 +397,7 @@ impl Executor for LimitExecutor {
     }
 }
 
-/// Aggregate function types for GROUP BY
+/// GROUP BY 聚合函数类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum AggregateFunction {
     Count,
@@ -407,7 +407,7 @@ pub enum AggregateFunction {
     Max(String),   // column name
 }
 
-/// Accumulator for aggregate functions
+/// 聚合函数累加器
 #[derive(Debug, Clone)]
 pub struct AggregateAccumulator {
     pub count: u64,
@@ -563,7 +563,7 @@ impl AggregateAccumulator {
     }
 }
 
-/// GROUP BY executor with aggregation
+/// 具有聚合功能的 GROUP BY 执行器
 pub struct GroupByExecutor {
     input: Box<dyn Executor>,
     group_expressions: Vec<Expression>,

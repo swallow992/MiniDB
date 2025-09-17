@@ -1,36 +1,36 @@
-//! SQL semantic analyzer
+//! SQL 语义分析器
 //!
-//! Performs semantic analysis on parsed SQL statements, including:
-//! - Type checking
-//! - Symbol resolution
-//! - Constraint validation
-//! - Schema validation
+//! 对解析后的 SQL 语句执行语义分析，包括：
+//! - 类型检查
+//! - 符号解析
+//! - 约束验证
+//! - 模式验证
 
 use crate::sql::parser::{BinaryOperator, Expression, Statement, UnaryOperator};
 use crate::types::{ColumnDefinition, DataType, Schema, Value};
 use std::collections::HashMap;
 use thiserror::Error;
 
-/// Analyzed SQL statement with resolved types and symbols
+/// 已分析的 SQL 语句，包含已解析的类型和符号
 #[derive(Debug, Clone)]
 pub struct AnalyzedStatement {
-    /// Original statement
+    /// 原始语句
     pub statement: Statement,
-    /// Schema information for referenced tables
+    /// 引用表的模式信息
     pub table_schemas: HashMap<String, Schema>,
-    /// Resolved expression types
+    /// 已解析的表达式类型
     pub expression_types: HashMap<String, DataType>,
 }
 
-/// Catalog interface for schema lookup
+/// 模式查找的目录接口
 pub trait SchemaCatalog {
-    /// Get schema for a table
+    /// 获取表的模式
     fn get_table_schema(&self, table_name: &str) -> Option<Schema>;
-    /// Check if table exists
+    /// 检查表是否存在
     fn table_exists(&self, table_name: &str) -> bool;
 }
 
-/// Simple in-memory catalog for testing
+/// 用于测试的简单内存目录
 #[derive(Debug, Default)]
 pub struct MemoryCatalog {
     schemas: HashMap<String, Schema>,
@@ -58,41 +58,41 @@ impl SchemaCatalog for MemoryCatalog {
     }
 }
 
-/// SQL semantic analyzer
+/// SQL 语义分析器
 pub struct SemanticAnalyzer<'a> {
     catalog: &'a dyn SchemaCatalog,
 }
 
-/// Semantic analysis errors
+/// 语义分析错误
 #[derive(Error, Debug)]
 pub enum SemanticError {
-    #[error("Table not found: {table}")]
+    #[error("未找到表: {table}")]
     TableNotFound {
         table: String,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Column not found: {column} in table {table}")]
+    #[error("在表 {table} 中未找到列: {column}")]
     ColumnNotFound {
         table: String,
         column: String,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Ambiguous column reference: {column}")]
+    #[error("列引用不明确: {column}")]
     AmbiguousColumn {
         column: String,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Type mismatch: expected {expected:?}, found {found:?}")]
+    #[error("类型不匹配: 期望 {expected:?}, 发现 {found:?}")]
     TypeMismatch {
         expected: DataType,
         found: DataType,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Invalid operation {op:?} on types {left:?} and {right:?}")]
+    #[error("在类型 {left:?} 和 {right:?} 上执行无效操作 {op:?}")]
     InvalidBinaryOperation {
         op: BinaryOperator,
         left: DataType,
@@ -100,33 +100,33 @@ pub enum SemanticError {
         position: Option<(u32, u32)>,
     },
 
-    #[error("Invalid unary operation {op:?} on type {operand:?}")]
+    #[error("在类型 {operand:?} 上执行无效一元操作 {op:?}")]
     InvalidUnaryOperation {
         op: UnaryOperator,
         operand: DataType,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Duplicate column name: {column}")]
+    #[error("重复的列名: {column}")]
     DuplicateColumn {
         column: String,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Table already exists: {table}")]
+    #[error("表已存在: {table}")]
     TableAlreadyExists {
         table: String,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Insert column count mismatch: expected {expected}, got {actual}")]
+    #[error("插入列数不匹配: 期望 {expected}, 实际 {actual}")]
     InsertColumnMismatch {
         expected: usize,
         actual: usize,
         position: Option<(u32, u32)>,
     },
 
-    #[error("Column {column} cannot be null")]
+    #[error("列 {column} 不能为空")]
     NullConstraintViolation {
         column: String,
         position: Option<(u32, u32)>,
@@ -134,7 +134,7 @@ pub enum SemanticError {
 }
 
 impl SemanticError {
-    /// Create TableNotFound error with default position
+    /// 创建带默认位置的 TableNotFound 错误
     pub fn table_not_found(table: String) -> Self {
         SemanticError::TableNotFound {
             table,
@@ -142,7 +142,7 @@ impl SemanticError {
         }
     }
 
-    /// Create ColumnNotFound error with default position  
+    /// 创建带默认位置的 ColumnNotFound 错误
     pub fn column_not_found(table: String, column: String) -> Self {
         SemanticError::ColumnNotFound {
             table,
@@ -151,7 +151,7 @@ impl SemanticError {
         }
     }
 
-    /// Create TypeMismatch error with default position
+    /// 创建带默认位置的 TypeMismatch 错误
     pub fn type_mismatch(expected: DataType, found: DataType) -> Self {
         SemanticError::TypeMismatch {
             expected,
@@ -160,7 +160,7 @@ impl SemanticError {
         }
     }
 
-    /// Create DuplicateColumn error with default position
+    /// 创建带默认位置的 DuplicateColumn 错误
     pub fn duplicate_column(column: String) -> Self {
         SemanticError::DuplicateColumn {
             column,
@@ -168,7 +168,7 @@ impl SemanticError {
         }
     }
 
-    /// Create TableAlreadyExists error with default position
+    /// 创建带默认位置的 TableAlreadyExists 错误
     pub fn table_already_exists(table: String) -> Self {
         SemanticError::TableAlreadyExists {
             table,
@@ -176,7 +176,7 @@ impl SemanticError {
         }
     }
 
-    /// Create InsertColumnMismatch error with default position
+    /// 创建带默认位置的 InsertColumnMismatch 错误
     pub fn insert_column_mismatch(expected: usize, actual: usize) -> Self {
         SemanticError::InsertColumnMismatch {
             expected,
@@ -185,7 +185,7 @@ impl SemanticError {
         }
     }
 
-    /// Create NullConstraintViolation error with default position
+    /// 创建带默认位置的 NullConstraintViolation 错误
     pub fn null_constraint_violation(column: String) -> Self {
         SemanticError::NullConstraintViolation {
             column,
@@ -193,7 +193,7 @@ impl SemanticError {
         }
     }
 
-    /// Create InvalidBinaryOperation error with default position
+    /// 创建带默认位置的 InvalidBinaryOperation 错误
     pub fn invalid_binary_operation(op: BinaryOperator, left: DataType, right: DataType) -> Self {
         SemanticError::InvalidBinaryOperation {
             op,
@@ -203,7 +203,7 @@ impl SemanticError {
         }
     }
 
-    /// Create InvalidUnaryOperation error with default position
+    /// 创建带默认位置的 InvalidUnaryOperation 错误
     pub fn invalid_unary_operation(op: UnaryOperator, operand: DataType) -> Self {
         SemanticError::InvalidUnaryOperation {
             op,
@@ -212,7 +212,7 @@ impl SemanticError {
         }
     }
 
-    /// Create AmbiguousColumn error with default position
+    /// 创建带默认位置的 AmbiguousColumn 错误
     pub fn ambiguous_column(column: String) -> Self {
         SemanticError::AmbiguousColumn {
             column,
@@ -220,7 +220,7 @@ impl SemanticError {
         }
     }
 
-    /// Format error as [错误类型，位置，原因说明]
+    /// 格式化错误输出为 [错误类型，位置，原因说明]
     pub fn format_output(&self) -> String {
         let (category, position, reason) = match self {
             SemanticError::TableNotFound { table, position } => {
@@ -309,7 +309,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Self { catalog }
     }
 
-    /// Analyze a SQL statement
+    /// 分析 SQL 语句
     pub fn analyze(&self, stmt: Statement) -> Result<AnalyzedStatement, SemanticError> {
         let mut table_schemas = HashMap::new();
         let mut expression_types = HashMap::new();
@@ -400,7 +400,7 @@ impl<'a> SemanticAnalyzer<'a> {
         })
     }
 
-    /// Analyze CREATE TABLE statement
+    /// 分析 CREATE TABLE 语句
     fn analyze_create_table(
         &self,
         table_name: &str,
@@ -428,7 +428,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze DROP TABLE statement
+    /// 分析 DROP TABLE 语句
     fn analyze_drop_table(&self, table_name: &str) -> Result<(), SemanticError> {
         if !self.catalog.table_exists(table_name) {
             return Err(SemanticError::TableNotFound {
@@ -440,7 +440,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze SELECT statement
+    /// 分析 SELECT 语句
     fn analyze_select(
         &self,
         from_clause: &Option<crate::sql::parser::FromClause>,
@@ -471,7 +471,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze FROM clause
+    /// 分析 FROM 子句
     fn analyze_from_clause(
         &self,
         from_clause: &crate::sql::parser::FromClause,
@@ -496,7 +496,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze INSERT statement
+    /// 分析 INSERT 语句
     fn analyze_insert(
         &self,
         table_name: &str,
@@ -575,7 +575,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze UPDATE statement
+    /// 分析 UPDATE 语句
     fn analyze_update(
         &self,
         table_name: &str,
@@ -637,7 +637,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze DELETE statement
+    /// 分析 DELETE 语句
     fn analyze_delete(
         &self,
         table_name: &str,
@@ -671,7 +671,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(())
     }
 
-    /// Analyze expression and return its type
+    /// 分析表达式并返回其类型
     fn analyze_expression(
         &self,
         expr: &Expression,
@@ -790,7 +790,7 @@ impl<'a> SemanticAnalyzer<'a> {
         Ok(expr_type)
     }
 
-    /// Resolve column type from available schemas
+    /// 从可用模式中解析列类型
     fn resolve_column_type(
         &self,
         column_name: &str,
@@ -820,7 +820,7 @@ impl<'a> SemanticAnalyzer<'a> {
         }
     }
 
-    /// Analyze binary operation and return result type
+    /// 分析二元操作并返回结果类型
     fn analyze_binary_operation(
         &self,
         op: &BinaryOperator,
@@ -891,7 +891,7 @@ impl<'a> SemanticAnalyzer<'a> {
         }
     }
 
-    /// Analyze unary operation and return result type
+    /// 分析一元操作并返回结果类型
     fn analyze_unary_operation(
         &self,
         op: &UnaryOperator,
@@ -926,7 +926,7 @@ impl<'a> SemanticAnalyzer<'a> {
         }
     }
 
-    /// Check if a type is numeric
+    /// 检查类型是否为数值类型
     fn is_numeric_type(&self, data_type: &DataType) -> bool {
         matches!(
             data_type,

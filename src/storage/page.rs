@@ -1,39 +1,39 @@
-//! Page management
+//! 页面管理
 //!
-//! This module implements a page-based storage system with fixed-size pages.
-//! Each page can contain data records or index entries.
+//! 此模块实现基于页面的存储系统，使用固定大小的页面。
+//! 每个页面可以包含数据记录或索引条目。
 
 use std::collections::HashMap;
 use std::mem;
 use thiserror::Error;
 
-/// Page identifier type
+/// 页面标识符类型
 pub type PageId = u32;
 
-/// Slot identifier within a page
+/// 页面内的槽标识符
 pub type SlotId = u16;
 
-/// Page size in bytes (8KB)
+/// 页面大小（字节）(8KB)
 pub const PAGE_SIZE: usize = 8192;
 
-/// Header size in bytes
+/// 页头大小（字节）
 pub const PAGE_HEADER_SIZE: usize = 64;
 
-/// Maximum data size per page
+/// 每页最大数据大小
 pub const MAX_PAGE_DATA_SIZE: usize = PAGE_SIZE - PAGE_HEADER_SIZE;
 
-/// Page types
+/// 页面类型
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PageType {
-    /// Data page containing records
+    /// 包含记录的数据页
     Data = 1,
-    /// Index page containing B+ tree nodes
+    /// 包含 B+ 树节点的索引页
     Index = 2,
-    /// Meta page containing metadata
+    /// 包含元数据的元页
     Meta = 3,
 }
 
-/// Page header containing metadata
+/// 包含元数据的页头
 #[derive(Debug, Clone)]
 pub struct PageHeader {
     pub page_id: PageId,
@@ -46,37 +46,37 @@ pub struct PageHeader {
     pub checksum: u32,
 }
 
-/// Slot directory entry
+/// 槽目录条目
 #[derive(Debug, Clone, Copy)]
 pub struct SlotEntry {
-    /// Offset from beginning of page
+    /// 从页面开头的偏移量
     pub offset: u16,
-    /// Length of the record
+    /// 记录的长度
     pub length: u16,
 }
 
-/// A fixed-size page containing records
+/// 包含记录的固定大小页面
 #[derive(Debug, Clone)]
 pub struct Page {
     header: PageHeader,
-    /// Raw page data
+    /// 原始页面数据
     data: Vec<u8>,
-    /// Slot directory mapping slot_id to record location
+    /// 槽目录：将 slot_id 映射到记录位置
     slots: HashMap<SlotId, SlotEntry>,
-    /// Dirty flag indicating if page has been modified
+    /// 脏标志：表示页面是否已被修改
     dirty: bool,
 }
 
-/// Page-related errors
+/// 页面相关错误
 #[derive(Error, Debug)]
 pub enum PageError {
-    #[error("Page {0} not found")]
+    #[error("未找到页面 {0}")]
     NotFound(PageId),
 
-    #[error("Slot {0} not found in page")]
+    #[error("页面中未找到槽 {0}")]
     SlotNotFound(SlotId),
 
-    #[error("Not enough space in page (required: {required}, available: {available})")]
+    #[error("页面空间不足（需要: {required}, 可用: {available}）")]
     InsufficientSpace { required: usize, available: usize },
 
     #[error("Record too large (size: {size}, max: {max})")]
@@ -93,7 +93,7 @@ pub enum PageError {
 }
 
 impl PageHeader {
-    /// Create a new page header
+    /// 创建新的页面头
     pub fn new(page_id: PageId, page_type: PageType) -> Self {
         Self {
             page_id,
@@ -109,7 +109,7 @@ impl PageHeader {
 }
 
 impl Page {
-    /// Create a new empty page
+    /// 创建新的空页面
     pub fn new(page_id: PageId, page_type: PageType) -> Self {
         let data = vec![0u8; PAGE_SIZE];
 

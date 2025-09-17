@@ -1,35 +1,35 @@
-//! SQL parser
+//! SQL 解析器
 //!
-//! Recursive descent parser for SQL statements.
+//! SQL 语句的递归下降解析器。
 
 use crate::sql::lexer::{LexError, Lexer, Token};
 use crate::types::{DataType, Value};
 use thiserror::Error;
 
-/// Abstract syntax tree nodes for SQL statements
+/// SQL 语句的抽象语法树节点
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    /// CREATE TABLE statement
+    /// CREATE TABLE 语句
     CreateTable {
         table_name: String,
         columns: Vec<ColumnDef>,
         constraints: Vec<TableConstraint>,
     },
     
-    /// DROP TABLE statement
+    /// DROP TABLE 语句
     DropTable {
         table_name: String,
         if_exists: bool,
     },
     
-    /// INSERT statement
+    /// INSERT 语句
     Insert {
         table_name: String,
         columns: Option<Vec<String>>,
         values: Vec<Vec<Expression>>,
     },
     
-    /// SELECT statement
+    /// SELECT 语句
     Select {
         select_list: SelectList,
         from_clause: Option<FromClause>,
@@ -41,20 +41,20 @@ pub enum Statement {
         offset: Option<u64>,
     },
     
-    /// UPDATE statement
+    /// UPDATE 语句
     Update {
         table_name: String,
         assignments: Vec<Assignment>,
         where_clause: Option<Expression>,
     },
     
-    /// DELETE statement
+    /// DELETE 语句
     Delete {
         table_name: String,
         where_clause: Option<Expression>,
     },
     
-    /// CREATE INDEX statement
+    /// CREATE INDEX 语句
     CreateIndex {
         index_name: String,
         table_name: String,
@@ -62,20 +62,20 @@ pub enum Statement {
         is_unique: bool,
     },
     
-    /// DROP INDEX statement
+    /// DROP INDEX 语句
     DropIndex {
         index_name: String,
         table_name: String,
         if_exists: bool,
     },
     
-    /// EXPLAIN statement
+    /// EXPLAIN 语句
     Explain {
         statement: Box<Statement>,
     },
 }
 
-/// Column definition in CREATE TABLE
+/// CREATE TABLE 语句中的列定义
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
     pub name: String,
@@ -85,7 +85,7 @@ pub struct ColumnDef {
     pub primary_key: bool,
 }
 
-/// Table constraints
+/// 表约束
 #[derive(Debug, Clone, PartialEq)]
 pub enum TableConstraint {
     PrimaryKey(Vec<String>),
@@ -96,21 +96,21 @@ pub enum TableConstraint {
     },
 }
 
-/// SELECT list
+/// SELECT 列表
 #[derive(Debug, Clone, PartialEq)]
 pub enum SelectList {
     Wildcard,
     Expressions(Vec<SelectExpr>),
 }
 
-/// SELECT expression with optional alias
+/// 带可选别名的 SELECT 表达式
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectExpr {
     pub expr: Expression,
     pub alias: Option<String>,
 }
 
-/// FROM clause
+/// FROM 子句
 #[derive(Debug, Clone, PartialEq)]
 pub enum FromClause {
     Table(String),
@@ -122,7 +122,7 @@ pub enum FromClause {
     },
 }
 
-/// Join types
+/// 连接类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum JoinType {
     Inner,
@@ -131,91 +131,91 @@ pub enum JoinType {
     Full,
 }
 
-/// ORDER BY expression
+/// ORDER BY 表达式
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrderByExpr {
     pub expr: Expression,
     pub desc: bool,
 }
 
-/// UPDATE assignment
+/// UPDATE 赋值
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
     pub column: String,
     pub value: Expression,
 }
 
-/// Expressions
+/// 表达式
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    /// Literal values
+    /// 字面量值
     Literal(Value),
     
-    /// Column reference
+    /// 列引用
     Column(String),
     
-    /// Qualified column reference (table.column)
+    /// 限定列引用 (表名.列名)
     QualifiedColumn {
         table: String,
         column: String,
     },
     
-    /// Binary operations
+    /// 二元运算
     BinaryOp {
         left: Box<Expression>,
         op: BinaryOperator,
         right: Box<Expression>,
     },
     
-    /// Unary operations
+    /// 一元运算
     UnaryOp {
         op: UnaryOperator,
         expr: Box<Expression>,
     },
     
-    /// Function calls
+    /// 函数调用
     FunctionCall {
         name: String,
         args: Vec<Expression>,
     },
     
-    /// IN expression
+    /// IN 表达式
     In {
         expr: Box<Expression>,
         list: Vec<Expression>,
     },
     
-    /// BETWEEN expression
+    /// BETWEEN 表达式
     Between {
         expr: Box<Expression>,
         low: Box<Expression>,
         high: Box<Expression>,
     },
     
-    /// LIKE expression
+    /// LIKE 表达式
     Like {
         expr: Box<Expression>,
         pattern: Box<Expression>,
     },
     
-    /// IS NULL expression
+    /// IS NULL 表达式
     IsNull(Box<Expression>),
     
-    /// IS NOT NULL expression
+    /// IS NOT NULL 表达式
     IsNotNull(Box<Expression>),
 }
 
-/// Binary operators
+/// 二元运算符
 #[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
-    // Arithmetic
+    // 算术运算
     Add,
     Subtract,
     Multiply,
     Divide,
     Modulo,
     
-    // Comparison
+    // 比较运算
     Equal,
     NotEqual,
     LessThan,
@@ -223,12 +223,12 @@ pub enum BinaryOperator {
     GreaterThan,
     GreaterEqual,
     
-    // Logical
+    // 逻辑运算
     And,
     Or,
 }
 
-/// Unary operators
+/// 一元运算符
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Not,
@@ -236,33 +236,33 @@ pub enum UnaryOperator {
     Plus,
 }
 
-/// SQL parser
+/// SQL 解析器
 pub struct Parser {
     lexer: Lexer,
     current_token: Token,
 }
 
-/// Parser errors
+/// 解析器错误
 #[derive(Error, Debug)]
 pub enum ParseError {
-    #[error("Lexical error: {0}")]
+    #[error("词法错误: {0}")]
     LexError(#[from] LexError),
     
-    #[error("Unexpected token: expected {expected}, found {found:?}")]
+    #[error("意外的令牌: 期望 {expected}, 发现 {found:?}")]
     UnexpectedToken { expected: String, found: Token },
     
-    #[error("Unexpected end of input")]
+    #[error("意外的输入结束")]
     UnexpectedEof,
     
-    #[error("Invalid expression")]
+    #[error("无效的表达式")]
     InvalidExpression,
     
-    #[error("Unsupported feature: {0}")]
+    #[error("不支持的特性: {0}")]
     UnsupportedFeature(String),
 }
 
 impl Parser {
-    /// Create a new parser
+    /// 创建新的解析器
     pub fn new(mut lexer: Lexer) -> Result<Self, ParseError> {
         let current_token = lexer.next_token()?;
         Ok(Self {
@@ -271,13 +271,13 @@ impl Parser {
         })
     }
     
-    /// Advance to the next token
+    /// 前进到下一个令牌
     fn advance(&mut self) -> Result<(), ParseError> {
         self.current_token = self.lexer.next_token()?;
         Ok(())
     }
     
-    /// Check if current token matches expected and advance
+    /// 检查当前令牌是否匹配期望值并前进
     fn expect(&mut self, expected: Token) -> Result<(), ParseError> {
         if std::mem::discriminant(&self.current_token) == std::mem::discriminant(&expected) {
             self.advance()
@@ -289,7 +289,7 @@ impl Parser {
         }
     }
     
-    /// Parse a complete SQL statement
+    /// 解析完整的 SQL 语句
     pub fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         match &self.current_token {
             Token::Create => self.parse_create_statement(),
@@ -307,7 +307,7 @@ impl Parser {
         }
     }
     
-    /// Parse CREATE statement
+    /// 解析 CREATE 语句
     fn parse_create_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Create)?;
         
@@ -321,7 +321,7 @@ impl Parser {
         }
     }
     
-    /// Parse CREATE TABLE statement
+    /// 解析 CREATE TABLE 语句
     fn parse_create_table(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Table)?;
         
@@ -385,7 +385,7 @@ impl Parser {
         })
     }
     
-    /// Parse column definition
+    /// 解析列定义
     fn parse_column_def(&mut self) -> Result<ColumnDef, ParseError> {
         let name = match &self.current_token {
             Token::Identifier(name) => {
@@ -439,7 +439,7 @@ impl Parser {
         })
     }
     
-    /// Parse data type
+    /// 解析数据类型
     fn parse_data_type(&mut self) -> Result<DataType, ParseError> {
         let data_type = match &self.current_token {
             Token::Int => {
@@ -516,7 +516,7 @@ impl Parser {
         Ok(data_type)
     }
     
-    /// Parse PRIMARY KEY constraint
+    /// 解析 PRIMARY KEY 约束
     fn parse_primary_key_constraint(&mut self) -> Result<TableConstraint, ParseError> {
         self.expect(Token::Primary)?;
         self.expect(Token::Key)?;
@@ -545,7 +545,7 @@ impl Parser {
         Ok(TableConstraint::PrimaryKey(columns))
     }
     
-    /// Parse FOREIGN KEY constraint
+    /// 解析 FOREIGN KEY 约束
     fn parse_foreign_key_constraint(&mut self) -> Result<TableConstraint, ParseError> {
         self.expect(Token::Foreign)?;
         self.expect(Token::Key)?;
@@ -617,7 +617,7 @@ impl Parser {
         })
     }
     
-    /// Parse CREATE INDEX statement
+    /// 解析 CREATE INDEX 语句
     fn parse_create_index(&mut self) -> Result<Statement, ParseError> {
         let is_unique = if self.current_token == Token::Unique {
             self.advance()?;
@@ -701,7 +701,7 @@ impl Parser {
         })
     }
     
-    /// Parse DROP statement
+    /// 解析 DROP 语句
     fn parse_drop_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Drop)?;
         
@@ -715,7 +715,7 @@ impl Parser {
         }
     }
     
-    /// Parse DROP TABLE statement
+    /// 解析 DROP TABLE 语句
     fn parse_drop_table(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Table)?;
         
@@ -747,7 +747,7 @@ impl Parser {
         })
     }
     
-    /// Parse DROP INDEX statement
+    /// 解析 DROP INDEX 语句
     fn parse_drop_index(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Index)?;
         
@@ -796,7 +796,7 @@ impl Parser {
         })
     }
     
-    /// Parse EXPLAIN statement
+    /// 解析 EXPLAIN 语句
     fn parse_explain_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Explain)?;
         
@@ -805,7 +805,7 @@ impl Parser {
         Ok(Statement::Explain { statement })
     }
     
-    /// Parse SELECT statement
+    /// 解析 SELECT 语句
     fn parse_select_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Select)?;
         
@@ -894,7 +894,7 @@ impl Parser {
         })
     }
     
-    /// Parse SELECT list
+    /// 解析 SELECT 列表
     fn parse_select_list(&mut self) -> Result<SelectList, ParseError> {
         if self.current_token == Token::Multiply {
             self.advance()?;
@@ -931,7 +931,7 @@ impl Parser {
         }
     }
     
-    /// Parse FROM clause
+    /// 解析 FROM 子句
     fn parse_from_clause(&mut self) -> Result<FromClause, ParseError> {
         let mut from_clause = self.parse_from_table()?;
         
@@ -959,7 +959,7 @@ impl Parser {
         Ok(from_clause)
     }
     
-    /// Parse a single table in FROM clause
+    /// 解析 FROM 子句中的单个表
     fn parse_from_table(&mut self) -> Result<FromClause, ParseError> {
         match &self.current_token {
             Token::Identifier(name) => {
@@ -974,12 +974,12 @@ impl Parser {
         }
     }
     
-    /// Check if current token is a JOIN keyword
+    /// 检查当前令牌是否为 JOIN 关键字
     fn is_join_keyword(&self) -> bool {
         matches!(self.current_token, Token::Join | Token::Inner | Token::Left | Token::Right | Token::Full)
     }
     
-    /// Parse JOIN type
+    /// 解析 JOIN 类型
     fn parse_join_type(&mut self) -> Result<JoinType, ParseError> {
         match self.current_token {
             Token::Join => {
@@ -1022,7 +1022,7 @@ impl Parser {
         }
     }
     
-    /// Parse INSERT statement
+    /// 解析 INSERT 语句
     fn parse_insert_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Insert)?;
         self.expect(Token::Into)?;
@@ -1104,7 +1104,7 @@ impl Parser {
         })
     }
     
-    /// Parse UPDATE statement
+    /// 解析 UPDATE 语句
     fn parse_update_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Update)?;
         
@@ -1166,7 +1166,7 @@ impl Parser {
         })
     }
     
-    /// Parse DELETE statement
+    /// 解析 DELETE 语句
     fn parse_delete_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(Token::Delete)?;
         self.expect(Token::From)?;
@@ -1198,12 +1198,12 @@ impl Parser {
         })
     }
     
-    /// Parse expression (simplified version)
+    /// 解析表达式（简化版本）
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         self.parse_or_expression()
     }
     
-    /// Parse OR expression
+    /// 解析 OR 表达式
     fn parse_or_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_and_expression()?;
         
@@ -1220,7 +1220,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse AND expression
+    /// 解析 AND 表达式
     fn parse_and_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_equality_expression()?;
         
@@ -1237,7 +1237,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse equality expression
+    /// 解析等值表达式
     fn parse_equality_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_comparison_expression()?;
         
@@ -1262,7 +1262,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse comparison expression
+    /// 解析比较表达式
     fn parse_comparison_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_additive_expression()?;
         
@@ -1289,7 +1289,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse additive expression
+    /// 解析加减表达式
     fn parse_additive_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_multiplicative_expression()?;
         
@@ -1311,7 +1311,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse multiplicative expression
+    /// 解析乘除表达式
     fn parse_multiplicative_expression(&mut self) -> Result<Expression, ParseError> {
         let mut left = self.parse_unary_expression()?;
         
@@ -1337,7 +1337,7 @@ impl Parser {
         Ok(left)
     }
     
-    /// Parse unary expression
+    /// 解析一元表达式
     fn parse_unary_expression(&mut self) -> Result<Expression, ParseError> {
         match &self.current_token {
             Token::Not => {
@@ -1368,7 +1368,7 @@ impl Parser {
         }
     }
     
-    /// Parse primary expression
+    /// 解析基本表达式
     fn parse_primary_expression(&mut self) -> Result<Expression, ParseError> {
         match &self.current_token.clone() {
             Token::Integer(n) => {
@@ -1459,7 +1459,7 @@ impl Parser {
         }
     }
 
-    /// Parse ORDER BY clause list
+    /// 解析 ORDER BY 子句列表
     fn parse_order_by_list(&mut self) -> Result<Vec<OrderByExpr>, ParseError> {
         let mut order_exprs = Vec::new();
         
@@ -1493,7 +1493,7 @@ impl Parser {
         Ok(order_exprs)
     }
 
-    /// Parse GROUP BY clause list
+    /// 解析 GROUP BY 子句列表
     fn parse_group_by_list(&mut self) -> Result<Vec<Expression>, ParseError> {
         let mut group_exprs = Vec::new();
         
